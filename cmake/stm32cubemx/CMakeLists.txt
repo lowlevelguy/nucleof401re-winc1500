@@ -15,6 +15,16 @@ set(MX_Include_Dirs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Device/ST/STM32F4xx/Include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Include
+
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/common/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/socket/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/spi_flash/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/config
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/programmer
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/root_cert
 )
 
 # STM32CubeMX generated application sources
@@ -47,8 +57,53 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
 )
 
-# Drivers Midllewares
+# Drivers Middlewares
+set(WINC1500_Driver_Src
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/common/source/nm_common.c
 
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_sam4s.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samd21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_same70.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samg53.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samg55.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_saml21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_saml22.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samr21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samr30.c
+
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_sam4s.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samd21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_same70.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samg53.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samg55.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_saml21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_saml22.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samr21.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samr30.c
+
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmspi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmi2c.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmuart.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmdrv.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmdrv_crt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmbus.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmbus_crt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmasic.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmasic_crt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_wifi.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ssl.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_periph.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ota.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_hif.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_hif_crt.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_crypto.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ate_mode.c
+
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/socket/source/socket.c
+
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/spi_flash/source/spi_flash.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/spi_flash/source/flexible_flash.c
+)
 
 
 # Link directories setup
@@ -71,6 +126,10 @@ add_library(STM32_Drivers OBJECT)
 target_sources(STM32_Drivers PRIVATE ${STM32_Drivers_Src})
 target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
 
+# Create WINC1500_Driver static library
+add_library(WINC1500_Driver OBJECT)
+target_sources(WINC1500_Driver PRIVATE ${WINC1500_Driver_Src})
+target_link_libraries(WINC1500_Driver PUBLIC stm32cubemx)
 
 # Add STM32CubeMX generated application sources to the project
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${MX_Application_Src})
