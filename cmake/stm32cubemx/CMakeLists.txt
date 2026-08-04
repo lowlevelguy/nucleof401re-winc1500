@@ -16,6 +16,7 @@ set(MX_Include_Dirs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Device/ST/STM32F4xx/Include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Include
 
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/common/include
@@ -61,15 +62,7 @@ set(STM32_Drivers_Src
 set(WINC1500_Driver_Src
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/common/source/nm_common.c
 
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_sam4s.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samd21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_same70.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samg53.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samg55.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_saml21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_saml22.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samr21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_samr30.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_stm32f401xe.c
 
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_sam4s.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samd21.c

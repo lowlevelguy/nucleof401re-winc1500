@@ -112,5 +112,8 @@
 #include "bsp/include/nm_bsp_arduino_uno.h"
 #endif
 
+#ifdef STM32F401xE
+#include "bsp/include/nm_bsp_stm32f401xe.h"
+#endif
 
 #endif //_NM_BSP_INTERNAL_H_
