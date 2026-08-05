@@ -32,6 +32,13 @@ STATIC volatile tpfNmBspIsr module_irqn_pin_isr = NULL;
  * until the user explicitly turns it on.
  */
 STATIC void module_ctrl_pins_init(void) {
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOD_CLK_ENABLE();
+	__HAL_RCC_GPIOE_CLK_ENABLE();
+	__HAL_RCC_GPIOH_CLK_ENABLE();
+
 	GPIO_InitTypeDef gpio_init = {0};
 
 	/* Configure CHIP_EN, RESET_N and WAKE (if configured) pins.
@@ -80,14 +87,14 @@ STATIC void module_ctrl_pins_init(void) {
 sint8 nm_bsp_init(void) {
 	module_irqn_pin_isr = NULL;
 
-	// Initialise the module control pins
-	module_ctrl_pins_init();
-
 	// Ensure the system clock is configured
-	if (!(SysTick->CTRL & SysTick_CTRL_ENABLE_Msk &&
-		SysTick->CTRL & SysTick_CTRL_TICKINT_Msk)) {
+	if ((SysTick->CTRL & SysTick_CTRL_ENABLE_Msk) == 0 ||
+		(SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) == 0) {
 		SystemClock_Config();
 	}
+
+	// Initialise the module control pins
+	module_ctrl_pins_init();
 
 	return NM_BSP_STATE_OK;
 }
@@ -99,7 +106,7 @@ sint8 nm_bsp_deinit(void) {
 	HAL_GPIO_DeInit(CONF_WINC_CHIP_EN_PORT, CONF_WINC_CHIP_EN_PIN);
 	HAL_GPIO_DeInit(CONF_WINC_RESET_N_PORT, CONF_WINC_RESET_N_PIN);
 #if (CONF_WINC_USE_WAKE_PIN == 1)
-	HAL_GPIO_DeInit(CONF_WINC_WAKE_PORT, CONF_WINC_USE_WAKE_PIN);
+	HAL_GPIO_DeInit(CONF_WINC_WAKE_PORT, CONF_WINC_WAKE_PIN);
 #endif
 
 	return NM_BSP_STATE_OK;
@@ -171,17 +178,16 @@ void nm_bsp_register_isr(tpfNmBspIsr cb) {
 }
 
 void nm_bsp_interrupt_ctrl(uint8 state) {
-	if (state == 1) {
+	if (state == 1u) {
 		HAL_NVIC_SetPriority(CONF_WINC_IRQN_EXTI_LINE, 0, 0);
 		HAL_NVIC_EnableIRQ(CONF_WINC_IRQN_EXTI_LINE);
-	} else if (state == 0) {
+	} else if (state == 0u) {
 		HAL_NVIC_DisableIRQ(CONF_WINC_IRQN_EXTI_LINE);
 	}
 }
 
 /**
  * @brief Overrides HAL's default __weak implementation.
- * @param gpio_pin
  */
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin) {
 	if (gpio_pin == CONF_WINC_IRQN_PIN) {

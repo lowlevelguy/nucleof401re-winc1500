@@ -64,15 +64,7 @@ set(WINC1500_Driver_Src
 
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bsp/source/nm_bsp_stm32f401xe.c
 
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_sam4s.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samd21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_same70.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samg53.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samg55.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_saml21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_saml22.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samr21.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_samr30.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/bus_wrapper/source/nm_bus_wrapper_stm32f401xe.c
 
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmspi.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmi2c.c
@@ -107,7 +99,7 @@ set(MX_LINK_DIRS
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    
+   	WINC1500_Driver
 )
 # Interface library for Includes and symbols
 add_library(stm32cubemx INTERFACE)
