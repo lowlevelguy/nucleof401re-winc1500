@@ -13,11 +13,6 @@
 
 extern void SystemClock_Config(void);
 
-/* Types ---------------------------------------------------------------------*/
-typedef enum {
-	NM_BSP_STATE_OK = M2M_SUCCESS,
-} NmBspState_e;
-
 
 /* Private variables ---------------------------------------------------------*/
 STATIC volatile tpfNmBspIsr module_irqn_pin_isr = NULL;
@@ -96,7 +91,7 @@ sint8 nm_bsp_init(void) {
 	// Initialise the module control pins
 	module_ctrl_pins_init();
 
-	return NM_BSP_STATE_OK;
+	return M2M_SUCCESS;
 }
 
 sint8 nm_bsp_deinit(void) {
@@ -109,7 +104,7 @@ sint8 nm_bsp_deinit(void) {
 	HAL_GPIO_DeInit(CONF_WINC_WAKE_PORT, CONF_WINC_WAKE_PIN);
 #endif
 
-	return NM_BSP_STATE_OK;
+	return M2M_SUCCESS;
 }
 
 /**

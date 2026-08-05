@@ -31,7 +31,7 @@ set(MX_Include_Dirs
 # STM32CubeMX generated application sources
 set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/stm32f4xx_it.c
+	${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/stm32f4xx_it.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/stm32f4xx_hal_msp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/sysmem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/syscalls.c
@@ -70,17 +70,13 @@ set(WINC1500_Driver_Src
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmi2c.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmuart.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmdrv.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmdrv_crt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmbus.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmbus_crt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmasic.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/nmasic_crt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_wifi.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ssl.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_periph.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ota.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_hif.c
-	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_hif_crt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_crypto.c
 	${CMAKE_CURRENT_SOURCE_DIR}/../../winc1500/driver/source/m2m_ate_mode.c
 

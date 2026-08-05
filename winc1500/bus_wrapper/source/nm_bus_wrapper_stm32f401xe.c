@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "nm_common.h"
 #include "nm_bsp.h"
 #include "nm_bus_wrapper.h"
@@ -13,14 +15,14 @@
 #error "Non-SPI buses are currently unsupported."
 #endif
 
+#ifndef BUILD_TESTING
+#define STATIC static
+#endif
 
-/* Types ---------------------------------------------------------------------*/
-typedef enum {
-	NM_BUS_WRAPPER_STATUS_OK = M2M_SUCCESS,
-	NM_BUS_WRAPPER_STATUS_SPI_INIT_FAILED = -1,
-	NM_BUS_WRAPPER_STATUS_IOCTL_INVALID_OPCODE = M2M_ERR_BUS_FAIL,
-	NM_BUS_WRAPPER_STATUS_SPI_RW_INVALID_PARAMS = M2M_ERR_INVALID_ARG,
-} NmBusWrapperStatus_e;
+/* Public variables ----------------------------------------------------------*/
+tstrNmBusCapabilities egstrNmBusCapabilities = {
+	.u16MaxTrxSz = 1024
+};
 
 
 /* Private functions ---------------------------------------------------------*/
@@ -28,7 +30,7 @@ typedef enum {
 /**
  * @brief Drives the Slave Select pin low.
  */
-void spi_assert_ss(void) {
+STATIC void spi_assert_ss(void) {
 	HAL_GPIO_WritePin(CONF_WINC_SPI_SS_PORT, CONF_WINC_SPI_SS_PIN,
 		GPIO_PIN_RESET);
 }
@@ -36,7 +38,7 @@ void spi_assert_ss(void) {
 /**
  * @brief Drives the Slave Select pin high.
  */
-void spi_deassert_ss(void) {
+STATIC void spi_deassert_ss(void) {
 	HAL_GPIO_WritePin(CONF_WINC_SPI_SS_PORT, CONF_WINC_SPI_SS_PIN,
 		GPIO_PIN_SET);
 }
@@ -77,12 +79,12 @@ sint8 nm_bus_init(void* config) {
 		CONF_WINC_SPI_HANDLE.Init.CRCPolynomial = 10;
 
 		if (HAL_SPI_Init(&CONF_WINC_SPI_HANDLE) != HAL_OK) {
-			return NM_BUS_WRAPPER_STATUS_SPI_INIT_FAILED;
+			return M2M_ERR_BUS_FAIL;
 		}
 	}
 
 	/* ---- Configure Slave Select ---- */
-	GPIO_InitTypeDef gpio_init;
+	GPIO_InitTypeDef gpio_init = {0};
 	gpio_init.Pin = CONF_WINC_SPI_SS_PIN;
 	gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
 	gpio_init.Pull = GPIO_NOPULL;
@@ -96,7 +98,7 @@ sint8 nm_bus_init(void* config) {
 
 #endif
 
-	return NM_BUS_WRAPPER_STATUS_OK;
+	return M2M_SUCCESS;
 }
 
 /**
@@ -109,7 +111,7 @@ sint8 nm_bus_deinit(void) {
 
 #endif
 
-	return NM_BUS_WRAPPER_STATUS_OK;
+	return M2M_SUCCESS;
 }
 
 sint8 nm_bus_ioctl(uint8 opcode, void* params) {
@@ -120,16 +122,13 @@ sint8 nm_bus_ioctl(uint8 opcode, void* params) {
 	switch (opcode) {
 #ifdef CONF_WINC_USE_SPI
 	case NM_BUS_IOCTL_RW:
-		nm_spi_rw(spi_rw_params->pu8InBuf, spi_rw_params->pu8OutBuf,
+		return nm_spi_rw(spi_rw_params->pu8InBuf, spi_rw_params->pu8OutBuf,
 			spi_rw_params->u16Sz);
-		break;
 #endif
 
 	default:
-		return NM_BUS_WRAPPER_STATUS_IOCTL_INVALID_OPCODE;
+		return M2M_ERR_INVALID_ARG;
 	}
-
-	return NM_BUS_WRAPPER_STATUS_OK;
 }
 
 /**
@@ -138,14 +137,14 @@ sint8 nm_bus_ioctl(uint8 opcode, void* params) {
  */
 sint8 nm_bus_reinit(void* config) {
 	UNUSED(config);
-	return NM_BUS_WRAPPER_STATUS_OK;
+	return M2M_SUCCESS;
 }
 
 #ifdef CONF_WINC_USE_SPI
 sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	// At least one of the provided buffers should be non-NULL
 	if ((tx_buf == NULL && rx_buf == NULL) || buf_size == 0) {
-		return NM_BUS_WRAPPER_STATUS_SPI_RW_INVALID_PARAMS;
+		return M2M_ERR_INVALID_ARG;
 	}
 
 	// Claim SPI bus
@@ -174,7 +173,7 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	spi_deassert_ss();
 	CONF_WINC_SPI_BUS_RELEASE();
 
-	return NM_BUS_WRAPPER_STATUS_OK;
+	return M2M_SUCCESS;
 }
 
 /**
