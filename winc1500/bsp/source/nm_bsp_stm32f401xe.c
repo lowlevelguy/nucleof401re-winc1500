@@ -91,6 +91,8 @@ sint8 nm_bsp_init(void) {
 	// Initialise the module control pins
 	module_ctrl_pins_init();
 
+	M2M_DBG("Initialised BSP.\n");
+
 	return M2M_SUCCESS;
 }
 
@@ -103,6 +105,8 @@ sint8 nm_bsp_deinit(void) {
 #if (CONF_WINC_USE_WAKE_PIN == 1)
 	HAL_GPIO_DeInit(CONF_WINC_WAKE_PORT, CONF_WINC_WAKE_PIN);
 #endif
+
+	M2M_DBG("Deinitialised BSP.\n");
 
 	return M2M_SUCCESS;
 }
@@ -156,6 +160,7 @@ void nm_bsp_reset(void) {
 	HAL_GPIO_WritePin(CONF_WINC_WAKE_PORT, CONF_WINC_WAKE_PIN, GPIO_PIN_SET);
 #endif
 
+	M2M_DBG("Reset module.\n");
 }
 
 void nm_bsp_sleep(uint32 ms) {
@@ -176,11 +181,18 @@ void nm_bsp_interrupt_ctrl(uint8 state) {
 	if (state == 1u) {
 		HAL_NVIC_SetPriority(CONF_WINC_IRQN_EXTI_LINE, 0, 0);
 		HAL_NVIC_EnableIRQ(CONF_WINC_IRQN_EXTI_LINE);
+		M2M_DBG("Interrupts: on.\n");
 	} else if (state == 0u) {
 		HAL_NVIC_DisableIRQ(CONF_WINC_IRQN_EXTI_LINE);
+		M2M_DBG("Interrupts: off.\n");
 	}
 }
 
+/**
+ * TODO: Replace HAL __weak callback override with an `add_callback()`
+ *  mechanism of some sort, to allow the user to his own custom logic for other
+ *  EXTI devices.
+ */
 /**
  * @brief Overrides HAL's default __weak implementation.
  */
