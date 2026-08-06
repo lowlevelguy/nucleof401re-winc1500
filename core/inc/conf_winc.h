@@ -45,13 +45,16 @@ extern "C" {
  * @{
  */
 #define CONF_WINC_USE_SPI
-#ifdef CONF_WINC_USE_SPI
-extern SPI_HandleTypeDef hspi2;
+#define CONF_WINC_SPI_USE_DMA
 
+#ifdef CONF_WINC_USE_SPI
 /**
  * @brief SPI interface and Slave Select pin mapping
  */
+extern SPI_HandleTypeDef hspi2;
 #define CONF_WINC_SPI_HANDLE		hspi2
+#define CONF_WINC_SPI_INSTANCE		SPI2
+#define CONF_WINC_SPI_IRQN			SPI2_IRQn
 #define CONF_WINC_SPI_SS_PORT		GPIOB
 #define CONF_WINC_SPI_SS_PIN		GPIO_PIN_12
 
@@ -78,6 +81,25 @@ extern volatile uint8_t spi_transfer_done;
 		} \
 	} while(0)
 #define CONF_WINC_SPI_SYNC_NOTIFY()		do { spi_transfer_done = 1; } while(0)
+
+#ifdef CONF_WINC_SPI_USE_DMA
+extern DMA_HandleTypeDef hdma_tx, hdma_rx;
+
+/**
+ * @brief DMA mapping
+ *
+ * @note From RM0368's reference manual (table 28)
+ */
+extern HAL_StatusTypeDef (*spi_tx_dma_init)(void);
+#define CONF_WINC_SPI_DMA_TX_HANDLE		hdma_tx
+#define CONF_WINC_SPI_DMA_TX_IRQN		DMA1_Stream4_IRQn
+
+extern HAL_StatusTypeDef (*spi_rx_dma_init)(void);
+#define CONF_WINC_SPI_DMA_RX_HANDLE		hdma_rx
+#define CONF_WINC_SPI_DMA_RX_IRQN		DMA1_Stream3_IRQn
+
+#endif
+
 #endif
 
 #ifdef CONF_WINC_USE_I2C

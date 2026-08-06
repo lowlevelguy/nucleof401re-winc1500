@@ -19,6 +19,7 @@
 #define STATIC static
 #endif
 
+
 /* Public variables ----------------------------------------------------------*/
 tstrNmBusCapabilities egstrNmBusCapabilities = {
 	.u16MaxTrxSz = 1024
@@ -55,7 +56,6 @@ STATIC void spi_deassert_ss(void) {
 sint8 nm_bus_init(void* config) {
 	UNUSED(config);
 
-#ifdef CONF_WINC_USE_SPI
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
@@ -63,25 +63,116 @@ sint8 nm_bus_init(void* config) {
 	__HAL_RCC_GPIOE_CLK_ENABLE();
 	__HAL_RCC_GPIOH_CLK_ENABLE();
 
-	/* ---- Configure SPI interface, if it isn't already ---- */
-	if (HAL_SPI_GetState(&CONF_WINC_SPI_HANDLE) == HAL_SPI_STATE_RESET) {
-		CONF_WINC_SPI_HANDLE.Instance = SPI2;
-		CONF_WINC_SPI_HANDLE.Init.Mode = SPI_MODE_MASTER;
-		CONF_WINC_SPI_HANDLE.Init.Direction = SPI_DIRECTION_2LINES;
-		CONF_WINC_SPI_HANDLE.Init.DataSize = SPI_DATASIZE_8BIT;
-		CONF_WINC_SPI_HANDLE.Init.CLKPolarity = SPI_POLARITY_LOW;
-		CONF_WINC_SPI_HANDLE.Init.CLKPhase = SPI_PHASE_1EDGE;
-		CONF_WINC_SPI_HANDLE.Init.NSS = SPI_NSS_SOFT;
-		CONF_WINC_SPI_HANDLE.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
-		CONF_WINC_SPI_HANDLE.Init.FirstBit = SPI_FIRSTBIT_MSB;
-		CONF_WINC_SPI_HANDLE.Init.TIMode = SPI_TIMODE_DISABLE;
-		CONF_WINC_SPI_HANDLE.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-		CONF_WINC_SPI_HANDLE.Init.CRCPolynomial = 10;
+#ifdef CONF_WINC_USE_SPI
+	__HAL_RCC_SPI2_CLK_ENABLE();
 
-		if (HAL_SPI_Init(&CONF_WINC_SPI_HANDLE) != HAL_OK) {
+#ifdef CONF_WINC_SPI_USE_DMA
+	__HAL_RCC_DMA1_CLK_ENABLE();
+
+	/* ---- Initialise DMA interfaces ---- */
+	/* Unlike the SPI interface, the exact DMA configuration is mostly
+	 * inconsequential to the driver's functionality. */
+	if (HAL_DMA_GetState(&CONF_WINC_SPI_DMA_TX_HANDLE) == HAL_DMA_STATE_RESET) {
+		if (spi_tx_dma_init == NULL) {
+			M2M_ERR("No callback provided for initialising DMA for SPI TX.\n");
+			return M2M_ERR_BUS_FAIL;
+		}
+
+		if (spi_tx_dma_init() != HAL_OK) {
+			M2M_ERR("Failed to initialise DMA for SPI TX.\n");
 			return M2M_ERR_BUS_FAIL;
 		}
 	}
+
+	if (HAL_DMA_GetState(&CONF_WINC_SPI_DMA_RX_HANDLE) == HAL_DMA_STATE_RESET) {
+		if (spi_rx_dma_init == NULL) {
+			M2M_ERR("No callback provided for initialising DMA for SPI RX.\n");
+			return M2M_ERR_BUS_FAIL;
+		}
+
+		if (spi_rx_dma_init() != HAL_OK) {
+			M2M_ERR("Failed to initialise DMA for SPI RX.\n");
+			return M2M_ERR_BUS_FAIL;
+		}
+	}
+
+	/* ---- Validate DMA configs ---- */
+	/* A minimal set of DMA configuration parameters are still crucial to driver
+	 * functionality. */
+	if (CONF_WINC_SPI_DMA_TX_HANDLE.Init.Direction != DMA_MEMORY_TO_PERIPH
+	 || CONF_WINC_SPI_DMA_TX_HANDLE.Init.PeriphInc != DMA_PINC_DISABLE
+	 || CONF_WINC_SPI_DMA_TX_HANDLE.Init.MemInc != DMA_MINC_ENABLE
+	 || CONF_WINC_SPI_DMA_TX_HANDLE.Init.Mode != DMA_NORMAL) {
+
+		M2M_DBG("Misconfigured DMA for SPI TX. Re-initialising...\n");
+
+		CONF_WINC_SPI_DMA_TX_HANDLE.Init.Direction = DMA_MEMORY_TO_PERIPH;
+		CONF_WINC_SPI_DMA_TX_HANDLE.Init.PeriphInc = DMA_PINC_DISABLE;
+		CONF_WINC_SPI_DMA_TX_HANDLE.Init.MemInc = DMA_MINC_ENABLE;
+		CONF_WINC_SPI_DMA_TX_HANDLE.Init.Mode = DMA_NORMAL;
+
+		if (HAL_DMA_Init(&CONF_WINC_SPI_DMA_TX_HANDLE) != HAL_OK) {
+			M2M_ERR("Failed to initialise DMA for SPI TX.\n");
+			return M2M_ERR_BUS_FAIL;
+		}
+	 }
+
+	if (CONF_WINC_SPI_DMA_RX_HANDLE.Init.Direction != DMA_PERIPH_TO_MEMORY
+	 || CONF_WINC_SPI_DMA_RX_HANDLE.Init.PeriphInc != DMA_PINC_DISABLE
+	 || CONF_WINC_SPI_DMA_RX_HANDLE.Init.MemInc != DMA_MINC_ENABLE
+	 || CONF_WINC_SPI_DMA_RX_HANDLE.Init.Mode != DMA_NORMAL) {
+
+		M2M_DBG("Misconfigured DMA for SPI RX. Re-initialising...\n");
+
+		CONF_WINC_SPI_DMA_RX_HANDLE.Init.Direction = DMA_PERIPH_TO_MEMORY;
+		CONF_WINC_SPI_DMA_RX_HANDLE.Init.PeriphInc = DMA_PINC_DISABLE;
+		CONF_WINC_SPI_DMA_RX_HANDLE.Init.MemInc = DMA_MINC_ENABLE;
+		CONF_WINC_SPI_DMA_RX_HANDLE.Init.Mode = DMA_NORMAL;
+
+		if (HAL_DMA_Init(&CONF_WINC_SPI_DMA_RX_HANDLE) != HAL_OK) {
+			M2M_ERR("Failed to initialise DMA for SPI RX.\n");
+			return M2M_ERR_BUS_FAIL;
+		}
+	 }
+
+	M2M_DBG("Initialised DMA.\n");
+
+	/* ---- Link SPI to DMA, and configure NVIC ---- */
+	__HAL_LINKDMA(&CONF_WINC_SPI_HANDLE, hdmatx, CONF_WINC_SPI_DMA_TX_HANDLE);
+	HAL_NVIC_SetPriority(CONF_WINC_SPI_DMA_TX_IRQN, 0, 0);
+	HAL_NVIC_EnableIRQ(CONF_WINC_SPI_DMA_TX_IRQN);
+
+	__HAL_LINKDMA(&CONF_WINC_SPI_HANDLE, hdmarx, CONF_WINC_SPI_DMA_RX_HANDLE);
+	HAL_NVIC_SetPriority(CONF_WINC_SPI_DMA_RX_IRQN, 0, 0);
+	HAL_NVIC_EnableIRQ(CONF_WINC_SPI_DMA_RX_IRQN);
+#endif
+
+	/* ---- Configure SPI interface ---- */
+	/* Forcefully override any previous user initialisation to ensure the
+	 * configuration matches what's required by the module. */
+	CONF_WINC_SPI_HANDLE.Instance = CONF_WINC_SPI_INSTANCE;
+	CONF_WINC_SPI_HANDLE.Init.Mode = SPI_MODE_MASTER;
+	CONF_WINC_SPI_HANDLE.Init.Direction = SPI_DIRECTION_2LINES;
+	CONF_WINC_SPI_HANDLE.Init.DataSize = SPI_DATASIZE_8BIT;
+	CONF_WINC_SPI_HANDLE.Init.CLKPolarity = SPI_POLARITY_LOW;
+	CONF_WINC_SPI_HANDLE.Init.CLKPhase = SPI_PHASE_1EDGE;
+	CONF_WINC_SPI_HANDLE.Init.NSS = SPI_NSS_SOFT;
+	CONF_WINC_SPI_HANDLE.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+	CONF_WINC_SPI_HANDLE.Init.FirstBit = SPI_FIRSTBIT_MSB;
+	CONF_WINC_SPI_HANDLE.Init.TIMode = SPI_TIMODE_DISABLE;
+	CONF_WINC_SPI_HANDLE.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+	CONF_WINC_SPI_HANDLE.Init.CRCPolynomial = 10;
+
+	if (HAL_SPI_Init(&CONF_WINC_SPI_HANDLE) != HAL_OK) {
+		M2M_ERR("Failed to initialise SPI.\n");
+		return M2M_ERR_BUS_FAIL;
+	}
+
+	M2M_DBG("Initialised SPI.\n");
+
+	/* ---- Configure NVIC ---- */
+	HAL_NVIC_SetPriority(CONF_WINC_SPI_IRQN, 0, 0);
+	HAL_NVIC_EnableIRQ(CONF_WINC_SPI_IRQN);
 
 	/* ---- Configure Slave Select ---- */
 	GPIO_InitTypeDef gpio_init = {0};
@@ -93,10 +184,13 @@ sint8 nm_bus_init(void* config) {
 
 	spi_deassert_ss();
 
+	M2M_DBG("Initialised SS pin.\n");
+
 	// Power module on
 	nm_bsp_reset();
-
 #endif
+
+	M2M_DBG("Initialised bus wrapper.\n");
 
 	return M2M_SUCCESS;
 }
@@ -110,6 +204,8 @@ sint8 nm_bus_deinit(void) {
 	HAL_GPIO_DeInit(CONF_WINC_SPI_SS_PORT, CONF_WINC_SPI_SS_PIN);
 
 #endif
+
+	M2M_DBG("Deinitialised bus wrapper.\n");
 
 	return M2M_SUCCESS;
 }
@@ -149,32 +245,59 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 
 	// Claim SPI bus
 	CONF_WINC_SPI_BUS_ACQUIRE();
+	M2M_DBG("Acquired SPI bus.\n");
 	spi_assert_ss();
 
 	CONF_WINC_SPI_SYNC_PREPARE();
 
-	/* Fire SPI transfer over DMA.
+	/* Fire SPI transfer.
 	 * We ignore HAL return values, as a busy SPI interface would be the result
 	 * of either hardware issues, or misuse of the bus sync interface by the
 	 * user. */
+#ifdef CONF_WINC_SPI_USE_DMA
 	if (tx_buf == NULL) {
 		(void)HAL_SPI_Receive_DMA(&CONF_WINC_SPI_HANDLE, rx_buf, buf_size);
+		M2M_DBG("Awaiting RX of size %u...\n", buf_size);
 	} else if (rx_buf == NULL) {
 		(void)HAL_SPI_Transmit_DMA(&CONF_WINC_SPI_HANDLE, tx_buf, buf_size);
+		M2M_DBG("Initiating TX of size %u...", buf_size);
 	} else {
 		(void)HAL_SPI_TransmitReceive_DMA(&CONF_WINC_SPI_HANDLE,
 			tx_buf, rx_buf, buf_size);
+		M2M_DBG("Initiating full-duplex TX/RX of size %u...\n", buf_size);
 	}
+#else
+	if (tx_buf == NULL) {
+		(void)HAL_SPI_Receive_IT(&CONF_WINC_SPI_HANDLE, rx_buf, buf_size);
+	} else if (rx_buf == NULL) {
+		(void)HAL_SPI_Transmit_IT(&CONF_WINC_SPI_HANDLE, tx_buf, buf_size);
+	} else {
+		(void)HAL_SPI_TransmitReceive_IT(&CONF_WINC_SPI_HANDLE,
+			tx_buf, rx_buf, buf_size);
+	}
+#endif
 
 	// Wait until done
 	CONF_WINC_SPI_SYNC_WAIT();
+	M2M_DBG("Transfer complete.\n");
+
 
 	// Free SPI bus
 	spi_deassert_ss();
+	M2M_DBG("Releasing SPI bus.\n");
 	CONF_WINC_SPI_BUS_RELEASE();
+
+#endif
 
 	return M2M_SUCCESS;
 }
+
+#ifdef CONF_WINC_USE_SPI
+/**
+ * TODO: Replace HAL __weak callbacks override with an `add_callback()`
+ *  mechanism of some sort, to allow the user to his own custom logic for other
+ *  SPI devices.
+ */
 
 /**
  * @defgroup Override HAL's default __weak implementations.
@@ -193,6 +316,12 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi) {
 }
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi) {
+	if (hspi->Instance == CONF_WINC_SPI_HANDLE.Instance) {
+		CONF_WINC_SPI_SYNC_NOTIFY();
+	}
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi) {
 	if (hspi->Instance == CONF_WINC_SPI_HANDLE.Instance) {
 		CONF_WINC_SPI_SYNC_NOTIFY();
 	}
