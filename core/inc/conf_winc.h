@@ -19,15 +19,17 @@ extern "C" {
 #define CONF_WINC_PRINTF(...)		printf(__VA_ARGS__)
 
 /**
- * @defgroup GPIO mapping for BSP
+ * @defgroup BSP Config.
  * @{
+ */
+/**
+ * @brief GPIO mapping
  *
  * @note The WAKE pin is currently unused. However, the macros are there as
  * recommended by the datasheet (section 2.2, note 2) for possible future use.
  */
 #define CONF_WINC_IRQN_PORT			GPIOC
 #define CONF_WINC_IRQN_PIN			GPIO_PIN_5
-#define CONF_WINC_IRQN_EXTI_LINE	EXTI9_5_IRQn
 #define CONF_WINC_CHIP_EN_PORT		GPIOC
 #define CONF_WINC_CHIP_EN_PIN		GPIO_PIN_6
 #define CONF_WINC_RESET_N_PORT		GPIOC
@@ -36,6 +38,14 @@ extern "C" {
 #define CONF_WINC_USE_WAKE_PIN		0
 #define CONF_WINC_WAKE_PORT			NULL
 #define CONF_WINC_WAKE_PIN			0
+
+/**
+ * @brief EXTI Config For IRQN ISR
+ */
+extern void (*volatile irqn_isr)(uint16_t);
+#define CONF_WINC_IRQN_EXTI_LINE		EXTI9_5_IRQn
+#define CONF_WINC_EXTI_REGISTER_ISR(x)	do { irqn_isr = (x); } while(0)
+#define CONF_WINC_EXTI_DEREGISTER_ISR()	do { irqn_isr = NULL; } while(0)
 /**
  * @}
  */
@@ -82,25 +92,50 @@ extern volatile uint8_t spi_transfer_done;
 	} while(0)
 #define CONF_WINC_SPI_SYNC_NOTIFY()		do { spi_transfer_done = 1; } while(0)
 
+/**
+ * @brief SPI ISR registering and de-registering
+ */
+extern void (*volatile spi_tx_isr)(SPI_HandleTypeDef*);
+extern void (*volatile spi_rx_isr)(SPI_HandleTypeDef*);
+extern void (*volatile spi_tx_rx_isr)(SPI_HandleTypeDef*);
+extern void (*volatile spi_error_isr)(SPI_HandleTypeDef*);
+
+#define CONF_WINC_SPI_REGISTER_TX_ISR(x)	do { spi_tx_isr = (x); } while(0)
+#define CONF_WINC_SPI_REGISTER_RX_ISR(x)	do { spi_rx_isr = (x); } while(0)
+#define CONF_WINC_SPI_REGISTER_TX_RX_ISR(x)	do { spi_tx_rx_isr = (x); } while(0)
+#define CONF_WINC_SPI_REGISTER_ERROR_ISR(x)	do { spi_error_isr = (x); } while(0)
+
+#define CONF_WINC_SPI_DEREGISTER_TX_ISR()		\
+	do { spi_tx_isr = NULL; } while(0)
+#define CONF_WINC_SPI_DEREGISTER_RX_ISR()		\
+	do { spi_rx_isr = NULL; } while(0)
+#define CONF_WINC_SPI_DEREGISTER_TX_RX_ISR()	\
+	do { spi_tx_rx_isr = NULL; } while(0)
+#define CONF_WINC_SPI_DEREGISTER_ERROR_ISR()	\
+	do { spi_error_isr = NULL; } while(0)
+
+
 #ifdef CONF_WINC_SPI_USE_DMA
-extern DMA_HandleTypeDef hdma_tx, hdma_rx;
+extern DMA_HandleTypeDef hdma_spi_tx, hdma_spi_rx;
 
 /**
  * @brief DMA mapping
  *
  * @note From RM0368's reference manual (table 28)
  */
-extern HAL_StatusTypeDef (*spi_tx_dma_init)(void);
-#define CONF_WINC_SPI_DMA_TX_HANDLE		hdma_tx
+HAL_StatusTypeDef spi_dma_tx_init(void);
+#define CONF_WINC_SPI_DMA_TX_HANDLE		hdma_spi_tx
+#define CONF_WINC_SPI_DMA_TX_INIT()		spi_dma_tx_init()
 #define CONF_WINC_SPI_DMA_TX_IRQN		DMA1_Stream4_IRQn
 
-extern HAL_StatusTypeDef (*spi_rx_dma_init)(void);
-#define CONF_WINC_SPI_DMA_RX_HANDLE		hdma_rx
+HAL_StatusTypeDef spi_dma_rx_init(void);
+#define CONF_WINC_SPI_DMA_RX_HANDLE		hdma_spi_rx
+#define CONF_WINC_SPI_DMA_RX_INIT()		spi_dma_rx_init()
 #define CONF_WINC_SPI_DMA_RX_IRQN		DMA1_Stream3_IRQn
 
-#endif
+#endif /* CONF_WINC_SPI_USE_DMA */
 
-#endif
+#endif /* CONF_WINC_USE_SPI */
 
 #ifdef CONF_WINC_USE_I2C
 #undef CONF_WINC_USE_I2C

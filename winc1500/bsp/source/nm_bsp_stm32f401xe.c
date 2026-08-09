@@ -20,6 +20,19 @@ STATIC volatile tpfNmBspIsr module_irqn_pin_isr = NULL;
 
 /* Private functions ---------------------------------------------------------*/
 /**
+ * @brief IRQ Handler for IRQN pin
+ *
+ * @param gpio_pin GPIO pin owning the IRQ
+ */
+void irqn_on_irq(uint16_t gpio_pin) {
+	if (gpio_pin == CONF_WINC_IRQN_PIN) {
+		if (module_irqn_pin_isr != NULL) {
+			module_irqn_pin_isr();
+		}
+	}
+}
+
+/**
  * @brief Initialises module control pins: CHIP_EN, RESET_N, IRQN and, if
  * configured, WAKE.
  *
@@ -42,7 +55,7 @@ STATIC void module_ctrl_pins_init(void) {
 #if (CONF_WINC_USE_WAKE_PIN == 1)
 	gpio_init.Pin =
 		CONF_WINC_CHIP_EN_PIN | CONF_WINC_WAKE_PIN | CONF_WINC_RESET_N_PIN;
-#else
+#else /* CONF_WINC_USE_WAKE_PIN != 1 */
 	gpio_init.Pin = CONF_WINC_CHIP_EN_PIN | CONF_WINC_RESET_N_PIN;
 #endif
 	gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -58,6 +71,7 @@ STATIC void module_ctrl_pins_init(void) {
 	gpio_init.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(CONF_WINC_IRQN_PORT, &gpio_init);
 
+	CONF_WINC_EXTI_REGISTER_ISR(irqn_on_irq);
 	nm_bsp_interrupt_ctrl(1);
 
 	/* Pin init values (module off):
@@ -98,6 +112,8 @@ sint8 nm_bsp_init(void) {
 
 sint8 nm_bsp_deinit(void) {
 	nm_bsp_interrupt_ctrl(0);
+
+	CONF_WINC_EXTI_DEREGISTER_ISR();
 
 	HAL_GPIO_DeInit(CONF_WINC_IRQN_PORT, CONF_WINC_IRQN_PIN);
 	HAL_GPIO_DeInit(CONF_WINC_CHIP_EN_PORT, CONF_WINC_CHIP_EN_PIN);
@@ -185,23 +201,5 @@ void nm_bsp_interrupt_ctrl(uint8 state) {
 	} else if (state == 0u) {
 		HAL_NVIC_DisableIRQ(CONF_WINC_IRQN_EXTI_LINE);
 		M2M_DBG("Interrupts: off.\n");
-	}
-}
-
-/**
- * TODO: Replace HAL __weak callback override with an `add_callback()`
- *  mechanism of some sort, to allow the user to his own custom logic for other
- *  EXTI devices.
- */
-/**
- * @brief Overrides HAL's default __weak implementation.
- */
-void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin) {
-	if (gpio_pin == CONF_WINC_IRQN_PIN) {
-		/* As nm_bsp_register_isr is never called by an ISR, no preemption can
-		 * cause a time-of-check time-of-use race. */
-		if (module_irqn_pin_isr != NULL) {
-			module_irqn_pin_isr();
-		}
 	}
 }
