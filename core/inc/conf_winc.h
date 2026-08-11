@@ -83,14 +83,22 @@ extern volatile uint8_t spi_bus_free;
 /**
  * @brief SPI operations sync interface
  */
-extern volatile uint8_t spi_transfer_done;
-#define CONF_WINC_SPI_SYNC_PREPARE()	do { spi_transfer_done = 0; } while(0)
+extern volatile uint8_t spi_transfer_done, spi_transfer_error;
+#define CONF_WINC_SPI_SYNC_PREPARE()	do { \
+		spi_transfer_done = 0; \
+		spi_transfer_error = 0; \
+	} while(0)
 #define CONF_WINC_SPI_SYNC_WAIT()		do { \
 		while(spi_transfer_done != 1) { \
 			HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI); \
 		} \
 	} while(0)
 #define CONF_WINC_SPI_SYNC_NOTIFY()		do { spi_transfer_done = 1; } while(0)
+#define CONF_WINC_SPI_SYNC_NOTIFY_ERR() do { \
+		spi_transfer_done = 1; \
+		spi_transfer_error = 1; \
+	} while(0)
+#define CONF_WINC_SPI_SYNC_ERR_STATUS	(spi_transfer_error)
 
 /**
  * @brief SPI ISR registering and de-registering

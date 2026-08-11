@@ -45,13 +45,24 @@ STATIC void spi_deassert_ss(void) {
 }
 
 /**
- * @brief IRQ Handler for SPI events
+ * @brief IRQ Handler for successful SPI events
  *
  * @param hspi Pointer to SPI handle owning the IRQ
  */
-STATIC void spi_on_irq(SPI_HandleTypeDef* hspi) {
+STATIC void spi_on_irq_success(SPI_HandleTypeDef* hspi) {
 	if (hspi->Instance == CONF_WINC_SPI_HANDLE.Instance) {
 		CONF_WINC_SPI_SYNC_NOTIFY();
+	}
+}
+
+/**
+ * @brief IRQ Handler for error SPI events
+ *
+ * @param hspi Pointer to SPI handle owning the IRQ
+ */
+STATIC void spi_on_irq_error(SPI_HandleTypeDef* hspi) {
+	if (hspi->Instance == CONF_WINC_SPI_HANDLE.Instance) {
+		CONF_WINC_SPI_SYNC_NOTIFY_ERR();
 	}
 }
 #endif
@@ -175,10 +186,10 @@ sint8 nm_bus_init(void* config) {
 	/* ---- Register SPI event ISRs ---- */
 	/* We use one common IRQ handler callback since the only job we require of
 	 * an ISR is to notify our bus wrapper of transfer completion. */
-	CONF_WINC_SPI_REGISTER_TX_ISR(spi_on_irq);
-	CONF_WINC_SPI_REGISTER_RX_ISR(spi_on_irq);
-	CONF_WINC_SPI_REGISTER_TX_RX_ISR(spi_on_irq);
-	CONF_WINC_SPI_REGISTER_ERROR_ISR(spi_on_irq);
+	CONF_WINC_SPI_REGISTER_TX_ISR(spi_on_irq_success);
+	CONF_WINC_SPI_REGISTER_RX_ISR(spi_on_irq_success);
+	CONF_WINC_SPI_REGISTER_TX_RX_ISR(spi_on_irq_success);
+	CONF_WINC_SPI_REGISTER_ERROR_ISR(spi_on_irq_error);
 
 	/* ---- Configure NVIC ---- */
 	HAL_NVIC_SetPriority(CONF_WINC_SPI_IRQN, 0, 0);
@@ -259,7 +270,7 @@ sint8 nm_bus_reinit(void* config) {
 sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	// At least one of the provided buffers should be non-NULL
 	if ((tx_buf == NULL && rx_buf == NULL) || buf_size == 0) {
-		return M2M_ERR_INVALID_ARG;
+		return M2M_ERR_BUS_FAIL;
 	}
 
 	// Claim SPI bus
@@ -298,6 +309,10 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 
 	// Wait until done
 	CONF_WINC_SPI_SYNC_WAIT();
+	if (CONF_WINC_SPI_SYNC_ERR_STATUS == 1) {
+		M2M_ERR("Transfer failed.\n");
+		return M2M_ERR_BUS_FAIL;
+	}
 	M2M_DBG("Transfer complete.\n");
 
 	// Free SPI bus
