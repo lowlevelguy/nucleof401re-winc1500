@@ -75,11 +75,11 @@ STATIC void module_ctrl_pins_init(void) {
 	nm_bsp_interrupt_ctrl(1);
 
 	/* Pin init values (module off):
-	 * - RESET_N: high
+	 * - RESET_N: low
 	 * - CHIP_EN: low
 	 * - WAKE: low (if configured) */
 	HAL_GPIO_WritePin(CONF_WINC_RESET_N_PORT, CONF_WINC_RESET_N_PIN,
-		GPIO_PIN_SET);
+		GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(CONF_WINC_CHIP_EN_PORT, CONF_WINC_CHIP_EN_PIN,
 		GPIO_PIN_RESET);
 #if (CONF_WINC_USE_WAKE_PIN == 1)
