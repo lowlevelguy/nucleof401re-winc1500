@@ -170,7 +170,12 @@ sint8 nm_bus_init(void* config) {
 	CONF_WINC_SPI_HANDLE.Init.CLKPolarity = SPI_POLARITY_LOW;
 	CONF_WINC_SPI_HANDLE.Init.CLKPhase = SPI_PHASE_1EDGE;
 	CONF_WINC_SPI_HANDLE.Init.NSS = SPI_NSS_SOFT;
-	CONF_WINC_SPI_HANDLE.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+	/* The SPI peripherals on the STM32F401xE can be fed from either of the APB1
+	 * or APB2 peripheral clocks, capable of upto 42 MHz and 84 MHz frequencies
+	 * respectively. Hence, irrespective of the SPI peripheral used, a prescaler
+	 * value of 2 already suffices to conform to REQ-PERF-01.
+	 * We still choose, however, a prescaler of 4 to reduce EM noise. */
+	CONF_WINC_SPI_HANDLE.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
 	CONF_WINC_SPI_HANDLE.Init.FirstBit = SPI_FIRSTBIT_MSB;
 	CONF_WINC_SPI_HANDLE.Init.TIMode = SPI_TIMODE_DISABLE;
 	CONF_WINC_SPI_HANDLE.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
