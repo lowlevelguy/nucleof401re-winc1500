@@ -14,6 +14,8 @@ Version 1.0.
 * [3. Requirements](#3-requirements)
     * [3.1 Functions](#31-functions)
     * [3.2 Performance](#32-performance)
+    * [3.3 Usability](#33-usability)
+    * [3.4 Interface](#34-interface)
 * [5. Appendices](#5-appendices)
 
 ## 1. Introduction
@@ -101,6 +103,7 @@ defined by the user in their implementation.
 
 - Microchip ATWINC1500 datasheet (DS70005304F).
 - ATWINC1500 19.7.11 Software API reference manual.
+- ST STM32F401xE reference manual (RM0368).
 
 ## 3. Requirements
 
@@ -124,9 +127,9 @@ module-to-host interrupt management and putting the driver to sleep.
 | REQ-FUN-01 | On invocation, `nm_bsp_init` shall hold the CHIP_EN and RESET_N signals low when it returns.                                                                  | The module is powered off by default until a call is made to explicitly start it. CHIP_EN is active-high and RESET_N is active-low (ATWINC1500 datasheet, sections 7.4-7.6). |
 | REQ-FUN-02 | `nm_bsp_init` shall configure the IRQN signal to generate an interrupt on the falling edge, with the internal pull-up resistor enabled.                       | IRQN is active-low; the pull-up forces the line high while the module is powered off.                                                                                        |
 | REQ-FUN-03 | `nm_bsp_init` shall invoke the porting API to ensure that no ISR callback is registered for the IRQN signal.                                                  | If the function is invoked as part of a re-initialisation procedure, no leftover configuration from past state should remain.                                                |
-| REQ-FUN-04 | `nm_bsp_init` shall return `M2M_SUCCESS` on success, a negative integer on failure to fulfill any of the above requirements.                                  | The vendor contract requires it.                                                                                                                                             |
+| REQ-FUN-04 | `nm_bsp_init` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill any of the above requirements.                              | The vendor contract requires it.                                                                                                                                             |
 | REQ-FUN-05 | On invocation, `nm_bsp_deinit` shall deinitialise the CHIP_EN, RESET_N and IRQN control pins.                                                                 | Every successful `nm_bsp_init` is matched by a `nm_bsp_deinit` per the vendor contract.                                                                                      |
-| REQ-FUN-06 | `nm_bsp_deinit` shall return `M2M_SUCCESS` on success, a negative integer on failure to fulfill the above requirement.                                        | The vendor contract requires it.                                                                                                                                             |
+| REQ-FUN-06 | `nm_bsp_deinit` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill the above requirement.                                    | The vendor contract requires it.                                                                                                                                             |
 | REQ-FUN-07 | On invocation, `nm_bsp_reset` shall begin by holding the CHIP_EN and RESET_N signals low for at least 2 &mu;s.                                                | The datasheet specifies a minimum RESET_N pulse of 1 &mu;s. We double that value as a safety margin for timing correctness.                                                  |
 | REQ-FUN-08 | `nm_bsp_reset` shall follow by setting the CHIP_EN signal high and shall hold it high for at least 10 ms before setting the RESET_N signal high.              | The datasheet specifies a minimum of 5 ms between the CHIP_EN and RESET_N rises. We double that value for safety.                                                            |
 | REQ-FUN-09 | On invocation, `nm_bsp_sleep` shall block the invoking context for the specified number of milliseconds.                                                      | &mdash;                                                                                                                                                                      |
@@ -140,13 +143,8 @@ in `winc1500/bus_wrapper/include/nm_bus_wrapper.h`, restricted to SPI transport.
 
 For the purposes of this subsection:
 
-- The *module-required SPI configuration* is a full-duplex master, 8-bit data,
-  MSB-first, SPI Mode 0 (CPOL = 0, CPHA = 0), with software-controlled slave
-  select.
-- The *module-required DMA parameters* are normal mode, memory-increment
-  enabled, peripheral-increment disabled, in the direction of the data flow
-  (memory-to-peripheral for the TX stream, peripheral-to-memory for the RX
-  stream).
+- The *module-required SPI configuration* and the *module-required DMA
+  parameters* are defined in section 3.4.
 - An *SPI event* is a transmit-complete, receive-complete, transmit-receive-
   complete or error IRQ.
 
@@ -159,16 +157,21 @@ For the purposes of this subsection:
 | REQ-FUN-16 | `nm_bus_init` shall invoke the porting API to register a handler for each SPI event, and shall enable SPI interrupts in the NVIC.                                                             | Interrupt-driven transfers enable power-efficient synchronisation mechanisms, compared to timeout-based transfers which force polling.                                                                               |
 | REQ-FUN-17 | `nm_bus_init` shall leave the Slave Select signal deasserted on completion.                                                                                                                   | The module is disabled by default until a call is made to explicity enable it.                                                                                                                                       |
 | REQ-FUN-18 | `nm_bus_init` shall invoke the BSP API to perform a module reset.                                                                                                                             | The module is powered on only once the interface is ready.                                                                                                                                                           |
-| REQ-FUN-19 | `nm_bus_init` shall return `M2M_SUCCESS` on success, a negative integer on failure to fulfill the above requirement.                                                                          | The vendor contract requires it.                                                                                                                                                                                     |
+| REQ-FUN-19 | `nm_bus_init` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill any of the above requirements.                                                              | The vendor contract requires it.                                                                                                                                                                                     |
 | REQ-FUN-20 | On invocation, `nm_bus_deinit` shall deinitialise the Slave Select pin and deregister any SPI event handlers.                                                                                 | &mdash;                                                                                                                                                                                                              |
 | REQ-FUN-21 | `nm_bus_deinit` shall not affect the SPI and DMA interfaces in any respect.                                                                                                                   | Ownership of the SPI and DMA peripherals stays with the user.                                                                                                                                                        |
-| REQ-FUN-22 | On invocation, `nm_bus_ioctl` shall redirect to `nm_spi_rw` for any SPI read/write operation.                                                                                                 | The SPI read/write command is the only operation the driver issues in SPI mode.                                                                                                                                      |
-| REQ-FUN-23 | On invocation, `nm_spi_rw` shall return `M2M_BUS_FAIL` when invoked with a transfer size of zero.                                                                                             | The vendor contract requires it.                                                                                                                                                                                     |
-| REQ-FUN-24 | `nm_spi_rw` shall return `M2M_BUS_FAIL` when invoked with both the transmit and receive buffers NULL.                                                                                         | The vendor contract requires it.                                                                                                                                                                                     |
-| REQ-FUN-25 | When invoked with a transmit buffer and a NULL receive buffer, `nm_spi_rw` shall transmit the specified number of bytes and shall return `M2M_SUCCESS` on completion.                         | Half-duplex transmit path.                                                                                                                                                                                           |
-| REQ-FUN-26 | When invoked with a receive buffer and a NULL transmit buffer, `nm_spi_rw` shall receive the specified number of bytes and shall return `M2M_SUCCESS` on completion.                          | Half-duplex receive path.                                                                                                                                                                                            |
-| REQ-FUN-27 | When invoked with both non-NULL transmit and receive buffers, `nm_spi_rw` shall transmit and receive the specified number of bytes concurrently and shall return `M2M_SUCCESS` on completion. | Full-duplex transmit and receive path.                                                                                                                                                                               |
-| REQ-FUN-28 | `nm_spi_rw` shall assert the Slave Select signal before starting each SPI transfer and shall deassert it after the transfer completes.                                                        | &mdash;                                                                                                                                                                                                              |
+| REQ-FUN-22 | `nm_bus_deinit` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill any of the above requirements.                                                            | The vendor contract requires it.                                                                                                                                                                                     |
+| REQ-FUN-23 | On invocation, `nm_bus_ioctl` shall use its first parameter to select the bus I/O function to which it redirects.                                                                             | The first parameter acts as a dispatch key selecting among the bus operations exposed by the interface (`nm_bus_wrapper.h`).                                                                                         |
+| REQ-FUN-24 | `nm_bus_ioctl` shall return `M2M_ERR_INVALID_ARG` when called with a first parameter that has no corresponding bus I/O function.                                                              | The SPI read/write command is the only operation the driver issues in SPI mode; unrecognised commands are rejected per the vendor contract.                                                                          |
+| REQ-FUN-25 | `nm_bus_ioctl` shall repurpose its second parameter to pass to the selected bus I/O function as that function's parameters.                                                                   | The second parameter is forwarded so each bus operation receives its own argument structure.                                                                                                                         |
+| REQ-FUN-26 | `nm_bus_ioctl` shall return the return value of the selected bus I/O function.                                                                                                                | The vendor contract requires propagating the result of the performed operation.                                                                                                                                      |
+| REQ-FUN-27 | On invocation, `nm_spi_rw` shall return `M2M_ERR_BUS_FAIL` when invoked with a transfer size of zero.                                                                                         | The vendor contract requires it.                                                                                                                                                                                     |
+| REQ-FUN-28 | `nm_spi_rw` shall return `M2M_ERR_BUS_FAIL` when invoked with both the transmit and receive buffers NULL.                                                                                     | The vendor contract requires it.                                                                                                                                                                                     |
+| REQ-FUN-29 | When invoked with a transmit buffer and a NULL receive buffer, `nm_spi_rw` shall transmit the specified number of bytes and shall return `M2M_SUCCESS` on completion.                         | Half-duplex transmit path.                                                                                                                                                                                           |
+| REQ-FUN-30 | When invoked with a receive buffer and a NULL transmit buffer, `nm_spi_rw` shall receive the specified number of bytes and shall return `M2M_SUCCESS` on completion.                          | Half-duplex receive path.                                                                                                                                                                                            |
+| REQ-FUN-31 | When invoked with both non-NULL transmit and receive buffers, `nm_spi_rw` shall transmit and receive the specified number of bytes concurrently and shall return `M2M_SUCCESS` on completion. | Full-duplex transmit and receive path.                                                                                                                                                                               |
+| REQ-FUN-32 | `nm_spi_rw` shall assert the Slave Select signal before starting each SPI transfer and shall deassert it after the transfer completes.                                                        | &mdash;                                                                                                                                                                                                              |
+| REQ-FUN-33 | `nm_spi_rw` shall return `M2M_ERR_BUS_FAIL` when a transfer fails.                                                                                                                            | The vendor contract requires the wrapper to report transfer failure.                                                                                                                                                 |
 
 No requirement is made on `nm_bus_reinit`, as it is unused in the current driver
 version.
@@ -182,11 +185,11 @@ exclusivity and operation synchronisation.
 
 | ID         | Requirement                                                                                                                                               | Rationale                                                                                                                      |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| REQ-FUN-30 | `nm_spi_rw` shall invoke the porting API to acquire the SPI bus before asserting the Slave Select signal.                                                 | The SPI bus may be shared, so the wrapper claims it before any transfer.                                                       |
-| REQ-FUN-31 | `nm_spi_rw` shall invoke the porting API to release the SPI bus after deasserting the Slave Select signal.                                                | The bus is freed to allow for any pending accesses to proceed.                                                                 |
-| REQ-FUN-32 | `nm_spi_rw` shall invoke the porting API to prepare the synchronisation mechanism, before starting each SPI transfer.                                     | &mdash;                                                                                                                        |
-| REQ-FUN-33 | `nm_spi_rw` shall invoke the porting API to block middleware execution until transfer completion or failure, before it deasserts the Slave Select signal. | The vendor contract requires the wrapper to report transfer success and failure, hence it must block until either takes place. |
-| REQ-FUN-34 | On each SPI event, the handler shall invoke the porting API to signal transfer completion or failure.                                                     | Prevents `nm_spi_rw` from deadlocking.                                                                                         |
+| REQ-FUN-34 | `nm_spi_rw` shall invoke the porting API to acquire the SPI bus before asserting the Slave Select signal.                                                 | The SPI bus may be shared, so the wrapper claims it before any transfer.                                                       |
+| REQ-FUN-35 | `nm_spi_rw` shall invoke the porting API to release the SPI bus after deasserting the Slave Select signal.                                                | The bus is freed to allow for any pending accesses to proceed.                                                                 |
+| REQ-FUN-36 | `nm_spi_rw` shall invoke the porting API to prepare the synchronisation mechanism, before starting each SPI transfer.                                     | &mdash;                                                                                                                        |
+| REQ-FUN-37 | `nm_spi_rw` shall invoke the porting API to block middleware execution until transfer completion or failure, before it deasserts the Slave Select signal. | The vendor contract requires the wrapper to report transfer success and failure, hence it must block until either takes place. |
+| REQ-FUN-38 | On each SPI event, the handler shall invoke the porting API to signal transfer completion or failure.                                                     | Prevents `nm_spi_rw` from deadlocking.                                                                                         |
 
 ### 3.2 Performance
 
@@ -198,6 +201,36 @@ middleware shall meet.
 | REQ-PERF-01 | The SPI clock frequency shall not exceed 48 MHz.                                                          | The datasheet specifies this as the maximum supported SPI clock frequency. |
 | REQ-PERF-02 | The middleware shall define a maximum SPI transfer size, `egstrNmBusCapabilities `, of at least 16 bytes. | The vendor contract requires it (`nm_bus_wrapper.h`)                       |
 
+### 3.3 Usability
+
+This subsection specifies the requirements that ease the adaptation of the
+middleware to a target application by the user (defined
+[earlier](#1311-user-interface)). The target platform is the STM32F401xE family
+of microcontrollers; the middleware is not required to function on any other
+platform.
+
+| ID         | Requirement                                                                                                                                                 | Rationale                                                                                                           |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| REQ-USE-01 | Adapting the middleware to a target application shall not require changes to the vendor driver or to the board and transport abstraction layer.             | All application-specific behaviour is confined to the porting interface and its implementation.                     |
+| REQ-USE-02 | The middleware shall obtain SPI, DMA and EXTI interrupt delivery through the porting interface, and shall not claim exclusive ownership of those resources. | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
+| REQ-USE-03 | Selecting between DMA-based and interrupt-based SPI transfers shall require a single configuration change in the porting interface.                         | &mdash;                                                                                                             |
+| REQ-USE-04 | The middleware shall determine transfer-completion blocking through the porting interface without imposing a particular blocking mechanism.                 | The blocking mechanism is user-defined in the porting interface, so the user may adopt any waiting strategy.        |
+
+### 3.4 Interface
+
+This subsection specifies the requirements that apply to the hardware interface
+exposed by the middleware to the WINC1500 module on one side, and the software
+interface exposed to the user application &mdash; the porting interface &mdash;
+on the other.
+
+| ID        | Requirement                                                                                                                                                                                                                                                                           | Rationale                                                                                          |
+|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| REQ-IF-01 | The middleware shall expose the module control signals &mdash; CHIP_EN, RESET_N, IRQN &mdash; through the user-defined pins.                                                                                                                                                          | &mdash;                                                                                            |
+| REQ-IF-02 | The middleware shall expose the SPI data interface &mdash; SCK, MOSI, MISO &mdash; and Slave Select through the user-defined pins.                                                                                                                                                    | &mdash;                                                                                            |
+| REQ-IF-03 | The middleware shall configure the SPI interface as a full-duplex master, with 8-bit data, most-significant-bit-first, clock polarity low and phase first-edge, software-controlled slave select, and an SPI clock within the limit set by REQ-PERF-01.                               | This configuration is required by the module for SPI communication.                                |
+| REQ-IF-04 | When the DMA option is enabled, the middleware shall require the SPI TX and RX DMA streams to hold the module-required DMA parameters: memory-to-peripheral / peripheral-to-memory direction (respectively), peripheral-increment disabled, memory-increment enabled and normal mode. | These configurations ensure data flow correctness and prevent memory corruption.                   |
+| REQ-IF-05 | The middleware shall obtain interrupt delivery through the porting interface.                                                                                                                                                                                                         | &mdash;                                                                                            |
+
 ## 5. Appendices
 
 ### 5.1 Assumptions and dependencies
@@ -206,8 +239,3 @@ The middleware assumes a WINC1500 driver and module firmware of version 19.7.11.
 
 The middleware depends on the STM32 HAL, and on the user to supply a porting
 implementation.
-
-Under normal circumstances, it is estimated that an SPI bus access &mdash;
-waiting for bus availability, then for any ongoing transfer to complete and then
-performing our own &mdash; completes within a millisecond when the SPI clock is
-in the order of several MHz.
