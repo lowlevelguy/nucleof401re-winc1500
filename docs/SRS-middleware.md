@@ -16,7 +16,12 @@ Version 1.0.
     * [3.2 Performance](#32-performance)
     * [3.3 Usability](#33-usability)
     * [3.4 Interface](#34-interface)
+    * [3.5 Design Constraints](#35-design-constraints)
+    * [3.6 Software System Attributes](#36-software-system-attributes)
+* [4. Verification](#4-verification)
 * [5. Appendices](#5-appendices)
+    * [5.1 Assumptions and dependencies](#51-assumptions-and-dependencies)
+    * [5.2 Acronyms and abbreviations](#52-acronyms-and-abbreviations)
 
 ## 1. Introduction
 
@@ -230,6 +235,49 @@ on the other.
 | REQ-IF-03 | The middleware shall configure the SPI interface as a full-duplex master, with 8-bit data, most-significant-bit-first, clock polarity low and phase first-edge, software-controlled slave select, and an SPI clock within the limit set by REQ-PERF-01.                               | This configuration is required by the module for SPI communication.                                |
 | REQ-IF-04 | When the DMA option is enabled, the middleware shall require the SPI TX and RX DMA streams to hold the module-required DMA parameters: memory-to-peripheral / peripheral-to-memory direction (respectively), peripheral-increment disabled, memory-increment enabled and normal mode. | These configurations ensure data flow correctness and prevent memory corruption.                   |
 | REQ-IF-05 | The middleware shall obtain interrupt delivery through the porting interface.                                                                                                                                                                                                         | &mdash;                                                                                            |
+
+### 3.5 Design Constraints
+
+This subsection lists the design constraints imposed on the middleware by the
+vendor contract, the target platform and the project limitations. They restrict
+the design freedom of the middleware, but do not of themselves describe
+behaviour in response to an invocation.
+
+| ID         | Requirement                                                                                                                                                                                      |
+|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| REQ-DES-01 | The middleware shall implement the BSP and bus wrapper interfaces exactly as declared in the vendor headers `winc1500/bsp/include/nm_bsp.h` and `winc1500/bus_wrapper/include/nm_bus_wrapper.h`. |
+| REQ-DES-02 | The middleware shall not require modifications to the vendor driver files.                                                                                                                       |
+| REQ-DES-03 | The middleware shall only be required to implement the SPI transport of the bus wrapper; the UART and I2C transports shall be optional to implement.                                             |
+| REQ-DES-04 | The middleware shall require a configuration setting that selects a supported bus transport; a configuration selecting no transport, or an unsupported one, shall be rejected at compile time.   |
+| REQ-DES-05 | The middleware shall target the STM32F401xE family of microcontrollers. Hence, it is encouraged to take advantage of platform-specific behaviour during implementation.                          |
+| REQ-DES-06 | The middleware shall be implemented in the C11 / GNU11 language standard and shall have the STM32 HAL and the STM32 CMSIS headers as platform dependencies.                                      |
+| REQ-DES-07 | The middleware shall be developed against the WINC1500 driver and module firmware version 19.7.11.                                                                                               |
+
+### 3.6 Software System Attributes
+
+This subsection specifies the attributes that the middleware implementation shall
+possess beyond its functional behaviour, namely reliability, maintainability and
+portability. Each attribute is stated as a single, verifiable requirement.
+
+#### 3.6.1 Reliability
+
+| ID          | Requirement                                                                                                                                                                                                                       | Rationale                                                                                                                          |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| REQ-ATTR-01 | The middleware shall perform SPI data transfers from the invoking thread context only; it shall not perform any SPI transfer from within an interrupt handler.                                                                    | Transfers block the invoking context until completion (REQ-FUN-37), whereas ISRs should reduce execution time as much as possible. |
+| REQ-ATTR-02 | The middleware may implement recovery from SPI transfer failures internally, provided that failures not resolved by the recovery mechanism are reported to the invoking driver as error return values, as required by REQ-FUN-33. | Recovery is a design freedom of the middleware, but the driver depends on accurate failure reporting to run its own retry logic.   |
+| REQ-ATTR-03 | The board and transport layer shall make regulate access to its internally shared state in a thread-safe manner.                                                                                                                  | &mdash;                                                                                                                            |
+
+#### 3.6.2 Maintainability
+
+| ID          | Requirement                                                                                                       | Rationale                                                                                                      |
+|-------------|-------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| REQ-ATTR-04 | The middleware shall document the functions of its public API with Doxygen.                                       | Consistent API documentation supports maintainers in understanding the middleware contract.                    |
+
+#### 3.6.3 Portability
+
+| ID          | Requirement                                                                                                                                                                  |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| REQ-ATTR-05 | Porting the middleware shall not require changes to the board and transport layer implementation, but shall only require an appropriate implementation of porting interface. |
 
 ## 5. Appendices
 
