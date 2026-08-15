@@ -93,12 +93,18 @@ bus and SPI and DMA peripheral access is done in a manner that is thread-safe
 
 ### 1.4 Definitions
 
-| Term                                  | Meaning                                                                                                        |
-|---------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| Driver layer                          | The vendor source under `winc1500/`.                                                                           |
-| Board and transport abstraction layer | The complex of the BSP and the bus wrapper implementations. Also called board &amp; transport layer for short. |
-| Application layer                     | The application firmware.                                                                                      |
-| User application                      | The application layer plus the porting implementation.                                                         |
+| Term                                  | Meaning                                                                                                                                                                |
+|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Driver layer                          | The vendor source under `winc1500/`.                                                                                                                                   |
+| Board and transport abstraction layer | The complex of the BSP and the bus wrapper implementations. Also called board &amp; transport layer for short.                                                         |
+| Application layer                     | The application firmware.                                                                                                                                              |
+| User application                      | The application layer plus the porting implementation.                                                                                                                 |
+| CHIP_EN                               | The module chip-enable input, active high.                                                                                                                             |
+| RESET_N                               | The module reset input, active low.                                                                                                                                    |
+| IRQN                                  | The module interrupt-request output, active low.                                                                                                                       |
+| SS                                    | Slave Select. The module chip-select input for the SPI interface, active low.                                                                                          |
+| SPI event                             | A transmit-complete, receive-complete, transmit-receive-complete or error SPI interrupt.                                                                               |
+| EXTI                                  | The STM32 external interrupt/event controller.                                                                                                                         |
 
 When the phrase "user-specified" is used, it means that the object of interest
 is exposed to the board &amp; transport layer via the integration interface, and
