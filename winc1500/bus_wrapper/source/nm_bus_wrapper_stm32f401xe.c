@@ -312,10 +312,15 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	}
 #endif /* CONF_WINC_SPI_USE_DMA */
 
-	// Wait until done
+	// Wait until done or error
 	CONF_WINC_SPI_SYNC_WAIT();
+
+	// If a transfer error occurs, deassert SS, release SPI bus and report
 	if (CONF_WINC_SPI_SYNC_ERR_STATUS == 1) {
+		spi_deassert_ss();
 		M2M_ERR("Transfer failed.\n");
+		CONF_WINC_SPI_BUS_RELEASE();
+
 		return M2M_ERR_BUS_FAIL;
 	}
 	M2M_DBG("Transfer complete.\n");
@@ -323,7 +328,6 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	// Free SPI bus
 	spi_deassert_ss();
 	M2M_DBG("Releasing SPI bus.\n");
-	CONF_WINC_SPI_BUS_RELEASE();
 
 	return M2M_SUCCESS;
 }
