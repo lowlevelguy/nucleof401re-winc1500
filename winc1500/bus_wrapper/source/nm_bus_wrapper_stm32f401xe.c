@@ -328,6 +328,7 @@ sint8 nm_spi_rw(uint8* tx_buf, uint8* rx_buf, uint16 buf_size) {
 	// Free SPI bus
 	spi_deassert_ss();
 	M2M_DBG("Releasing SPI bus.\n");
+	CONF_WINC_SPI_BUS_RELEASE();
 
 	return M2M_SUCCESS;
 }
