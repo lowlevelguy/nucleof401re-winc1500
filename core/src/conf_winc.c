@@ -24,7 +24,9 @@ void (*volatile spi_error_isr)(SPI_HandleTypeDef*) = NULL;
 /**
  * @brief SPI mutexes
  */
-volatile uint8_t spi_bus_free = 1, spi_transfer_done = 1;
+volatile uint8_t spi_bus_free = 1,
+	spi_transfer_done = 1,
+	spi_transfer_error = 0;
 
 
 /* Public functions ----------------------------------------------------------*/
