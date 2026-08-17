@@ -19,4 +19,4 @@ Depending on your board, you can then adapt the OpenOCD script
 `nucleo-f401re-jlink.cfg` to flash to it.
 
 ## Documentation
-[Middleware Software Requirements Specification](docs/SRS-middleware.md)
+[Middleware Software Requirements Specification](docs/middleware/SRS.md)
