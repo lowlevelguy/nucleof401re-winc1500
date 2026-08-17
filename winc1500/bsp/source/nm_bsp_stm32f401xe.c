@@ -11,8 +11,6 @@
 #define	STATIC
 #endif
 
-extern void SystemClock_Config(void);
-
 
 /* Private variables ---------------------------------------------------------*/
 STATIC volatile tpfNmBspIsr module_irqn_pin_isr = NULL;
@@ -99,7 +97,7 @@ sint8 nm_bsp_init(void) {
 	// Ensure the system clock is configured
 	if ((SysTick->CTRL & SysTick_CTRL_ENABLE_Msk) == 0 ||
 		(SysTick->CTRL & SysTick_CTRL_TICKINT_Msk) == 0) {
-		SystemClock_Config();
+		CONF_WINC_SYSTEM_CLOCK_INIT();
 	}
 
 	// Initialise the module control pins

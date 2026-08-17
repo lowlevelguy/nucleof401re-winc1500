@@ -23,6 +23,12 @@ extern "C" {
  * @{
  */
 /**
+ * @brief System clock init
+ */
+extern void SystemClock_Config(void);
+#define CONF_WINC_SYSTEM_CLOCK_INIT()	SystemClock_Config()
+
+/**
  * @brief GPIO mapping
  *
  * @note The WAKE pin is currently unused. However, the macros are there as
