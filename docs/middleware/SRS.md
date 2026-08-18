@@ -105,22 +105,23 @@ bus and SPI and DMA peripheral access is done in a manner that is thread-safe
 
 ### 1.4 Definitions
 
-| Term                                  | Meaning                                                                                                                                                                |
-|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Driver layer                          | The vendor source under `winc1500/`.                                                                                                                                   |
-| Board and transport abstraction layer | The complex of the BSP and the bus wrapper implementations. Also called board &amp; transport layer for short.                                                         |
-| Application layer                     | The application firmware.                                                                                                                                              |
-| User application                      | The application layer plus the porting implementation.                                                                                                                 |
-| CHIP_EN                               | The module chip-enable input, active high.                                                                                                                             |
-| RESET_N                               | The module reset input, active low.                                                                                                                                    |
-| IRQN                                  | The module interrupt-request output, active low.                                                                                                                       |
-| SS                                    | Slave Select. The module chip-select input for the SPI interface, active low.                                                                                          |
-| SPI event                             | A transmit-complete, receive-complete, transmit-receive-complete or error SPI interrupt.                                                                               |
-| EXTI                                  | The STM32 external interrupt/event controller.                                                                                                                         |
+| Term                                  | Meaning                                                                                                        |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Driver layer                          | The vendor source under `winc1500/`.                                                                           |
+| Board and transport abstraction layer | The complex of the BSP and the bus wrapper implementations. Also called board &amp; transport layer for short. |
+| Porting API                           | The porting interface.                                                                                         |
+| Application layer                     | The application firmware.                                                                                      |
+| User application                      | The application layer plus the porting implementation.                                                         |
+| CHIP_EN                               | The module chip-enable input, active high.                                                                     |
+| RESET_N                               | The module reset input, active low.                                                                            |
+| IRQN                                  | The module interrupt-request output, active low.                                                               |
+| SS                                    | Slave Select. The module chip-select input for the SPI interface, active low.                                  |
+| SPI event                             | A transmit-complete, receive-complete, transmit-receive-complete or error SPI interrupt.                       |
+| EXTI                                  | The STM32 external interrupt/event controller.                                                                 |
 
-When the phrase "user-specified" is used, it means that the object of interest
-is exposed to the board &amp; transport layer via the porting interface, and
-defined by the user in their implementation.
+When the phrase "user-specified" or "user-defined" is used, it means that the
+object of interest is exposed to the board &amp; transport layer via the porting
+interface, and defined by the user in their implementation.
 
 ## 2. References
 
@@ -149,7 +150,7 @@ module-to-host interrupt management and putting the driver to sleep.
 |:----------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | REQ-FUN-01 | On invocation, `nm_bsp_init` shall hold the CHIP_EN and RESET_N signals low when it returns.                                                                  | The module is powered off by default until a call is made to explicitly start it. CHIP_EN is active-high and RESET_N is active-low (ATWINC1500 datasheet, sections 7.4-7.6). |
 | REQ-FUN-02 | `nm_bsp_init` shall configure the IRQN signal to generate an interrupt on the falling edge, with the internal pull-up resistor enabled.                       | IRQN is active-low; the pull-up forces the line high while the module is powered off.                                                                                        |
-| REQ-FUN-03 | `nm_bsp_init` shall invoke the porting API to ensure that no ISR callback is registered for the IRQN signal.                                                  | If the function is invoked as part of a re-initialisation procedure, no leftover configuration from past state should remain.                                                |
+| REQ-FUN-03 | `nm_bsp_init` shall invoke the porting API to ensure that no driver ISR callback is registered for the IRQN signal.                                           | If the function is invoked as part of a re-initialisation procedure, no leftover configuration from past state should remain.                                                |
 | REQ-FUN-04 | `nm_bsp_init` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill any of the above requirements.                              | The vendor contract requires it.                                                                                                                                             |
 | REQ-FUN-05 | On invocation, `nm_bsp_deinit` shall deinitialise the CHIP_EN, RESET_N and IRQN control pins.                                                                 | Every successful `nm_bsp_init` is matched by a `nm_bsp_deinit` per the vendor contract.                                                                                      |
 | REQ-FUN-06 | `nm_bsp_deinit` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill the above requirement.                                    | The vendor contract requires it.                                                                                                                                             |
@@ -173,7 +174,7 @@ For the purposes of this subsection:
 |     ID     | Requirement                                                                                                                                                                                   | Rationale                                                                                                                                                                                                            |
 |:----------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | REQ-FUN-12 | On invocation, `nm_bus_init` shall configure the SPI interface to the module-required SPI configuration, replacing any configuration in effect at entry.                                      | The SPI configuration in its entirety is crucial to establishing communication with the module. Ensuring its compliance with the module requirements becomes the middleware's responsibility rather than the user's. |
-| REQ-FUN-13 | When the DMA option is enabled, `nm_bus_init` shall invoke the porting API to initialise SPI TX and RX DMA streams, if needed.                                                                | Since DMA configuration is largely inconsequential to the driver functionality, more liberty is given to the user then with the SPI configuration.                                                                   |
+| REQ-FUN-13 | When the DMA option is enabled, `nm_bus_init` shall invoke the porting API to initialise SPI TX and RX DMA streams, if needed.                                                                | Since DMA configuration is largely inconsequential to the driver functionality, more liberty is given to the user than with the SPI configuration.                                                                   |
 | REQ-FUN-14 | When the DMA option is enabled, `nm_bus_init` shall ensure that each DMA stream holds the module-required DMA parameters, and shall reconfigure any stream that does not.                     | A minimal set of DMA parameters remains module-critical, so the wrapper validates and self-heals them.                                                                                                               |
 | REQ-FUN-15 | When the DMA option is enabled, `nm_bus_init` shall link SPI interface and DMA controller, and shall enable DMA interrupts in the NVIC.                                                       | &mdash;                                                                                                                                                                                                              |
 | REQ-FUN-16 | `nm_bus_init` shall invoke the porting API to register a handler for each SPI event, and shall enable SPI interrupts in the NVIC.                                                             | Interrupt-driven transfers enable power-efficient synchronisation mechanisms, compared to timeout-based transfers which force polling.                                                                               |
@@ -221,7 +222,7 @@ middleware shall meet.
 |     ID      | Requirement                                                                                                | Rationale                                                                  |
 |:-----------:|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
 | REQ-PERF-01 | The SPI clock frequency shall not exceed 48 MHz.                                                           | The datasheet specifies this as the maximum supported SPI clock frequency. |
-| REQ-PERF-02 | The middleware shall define a maximum SPI transfer size of at least 16 bytes via `egstrNmBusCapabilities`. | The vendor contract requires it (`nm_bus_wrapper.h`)                       |
+| REQ-PERF-02 | The middleware shall define a maximum SPI transfer size of at least 16 bytes via `egstrNmBusCapabilities`. | The vendor contract requires it (`nm_bus_wrapper.h`).                      |
 
 ### 3.3 Usability
 
@@ -231,13 +232,13 @@ middleware to a target application by the user (defined
 of microcontrollers; the middleware is not required to function on any other
 platform.
 
-|     ID     | Requirement                                                                                                                                                                                                                    | Rationale                                                                                                           |
-|:----------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| REQ-USE-01 | Adapting the middleware to a target application shall not require changes to the vendor driver or to the board and transport abstraction layer, and shall require only an appropriate implementation of the porting interface. | All application-specific behaviour is confined to the porting interface and its implementation.                     |
-| REQ-USE-02 | The middleware shall obtain SPI, DMA and EXTI interrupt delivery through the porting interface exclusively.                                                                                                                    | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
-| REQ-USE-03 | The middleware shall not claim exclusive ownership of the SPI, DMA and EXTI resources.                                                                                                                                         | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
-| REQ-USE-04 | Selecting between DMA-based and interrupt-based SPI transfers shall require a single configuration change in the porting interface.                                                                                            | &mdash;                                                                                                             |
-| REQ-USE-05 | The middleware shall determine transfer-completion blocking through the porting interface without imposing a particular blocking mechanism.                                                                                    | The blocking mechanism is user-defined in the porting interface, so the user may adopt any waiting strategy.        |
+|     ID     | Requirement                                                                                                                                                                                            | Rationale                                                                                                           |
+|:----------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| REQ-USE-01 | Adapting the middleware to a target application shall not require changes to the board and transport abstraction layer, and shall require only an appropriate implementation of the porting interface. | All application-specific behaviour is confined to the porting interface and its implementation.                     |
+| REQ-USE-02 | The middleware shall obtain SPI, DMA and EXTI ISR callback registration and deregistration through the porting interface exclusively.                                                                  | Enables sharing of the SPI, DMA and EXTI peripherals.                                                               |
+| REQ-USE-03 | The middleware shall not claim exclusive ownership of the SPI, DMA and EXTI resources.                                                                                                                 | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
+| REQ-USE-04 | Selecting between DMA-based and interrupt-based SPI transfers shall require a single configuration change in the porting interface.                                                                    | &mdash;                                                                                                             |
+| REQ-USE-05 | The middleware shall determine transfer-completion blocking through the porting interface without imposing a particular blocking mechanism.                                                            | The blocking mechanism is user-defined in the porting interface, so the user may adopt any waiting strategy.        |
 
 ### 3.4 Interface
 
@@ -277,8 +278,8 @@ behaviour in response to an invocation.
 |     ID     | Requirement                                                                                                                                                                                      |
 |:----------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | REQ-DES-01 | The middleware shall implement the BSP and bus wrapper interfaces exactly as declared in the vendor headers `winc1500/bsp/include/nm_bsp.h` and `winc1500/bus_wrapper/include/nm_bus_wrapper.h`. |
-| REQ-DES-02 | The middleware shall not require modifications to the vendor driver files.                                                                                                                       |
-| REQ-DES-03 | The middleware shall be required to implement the SPI transport of the bus wrapper.                                                                                                              |
+| REQ-DES-02 | The middleware shall not require modifications to the vendor driver files beyond the documented exceptions in [5.1](#51-assumptions-and-dependencies).                                           |
+| REQ-DES-03 | The middleware shall implement the SPI transport part of the bus wrapper.                                                                                                                        |
 | REQ-DES-04 | The middleware shall require a configuration setting that selects a supported bus transport; a configuration selecting no transport, or an unsupported one, shall be rejected at compile time.   |
 | REQ-DES-05 | The middleware shall target the STM32F401xE family of microcontrollers.                                                                                                                          |
 | REQ-DES-06 | The middleware shall be implemented in the C11 / GNU11 language standard and shall have the STM32 HAL and the STM32 CMSIS headers as platform dependencies.                                      |
@@ -321,7 +322,7 @@ The methods used are the following.
   artefact (e.g. "the delay is 1 ms, which satisfies the ≥2 μs requirement"),
   without executing the middleware on hardware.
 - **Test** &mdash; host-executed unit tests, using the build's `BUILD_TESTING`
-  option, the `STATIC` symbol export and mocks of the STM32 HAL.
+  option, the `STATIC` symbol export and mocks of the STM32 HAL and CMSIS.
 
 Hardware-based verification is intentionally excluded: exercising the middleware
 on target would additionally require an application firmware and a porting
@@ -337,46 +338,46 @@ row is identified by the requirement it verifies.
 
 ### 4.1 Functions
 
-| Requirement | Analysis                                                          | Test                                                                                  |
-|:-----------:|-------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| REQ-FUN-01  | &mdash;                                                           | Mocked GPIO: CHIP_EN and RESET_N held low on return.                                  |
-| REQ-FUN-02  | &mdash;                                                           | Mocked GPIO: IRQN initialised with pull-up resistor and falling edge interrupt.       |
-| REQ-FUN-03  | &mdash;                                                           | Mocked porting API: no ISR callback registered on init.                               |
-| REQ-FUN-04  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-05  | &mdash;                                                           | Mocked GPIO: control pins deinitialised.                                              |
-| REQ-FUN-06  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-07  | Derive the low hold time from the implementation.                 | Mocked GPIO: CHIP_EN and RESET_N held low initially.                                  |
-| REQ-FUN-08  | Derive the CHIP_EN-before-RESET_N timing from the implementation. | Mocked GPIO: CHIP_EN and RESET_N held high on return.                                 |
-| REQ-FUN-09  | &mdash;                                                           | Mocked delay: blocking duration asserted.                                             |
-| REQ-FUN-10  | &mdash;                                                           | Mocked porting API: EXTI callback registered.                                         |
-| REQ-FUN-11  | &mdash;                                                           | Mocked NVIC: enable and disable calls asserted.                                       |
-| REQ-FUN-12  | &mdash;                                                           | Mocked SPI: init function invoked even when already configured.                       |
-| REQ-FUN-13  | &mdash;                                                           | Mocked porting API: DMA TX and RX init invoked when not configured.                   |
-| REQ-FUN-14  | &mdash;                                                           | Mocked DMA: reconfigured when a parameter is wrong.                                   |
-| REQ-FUN-15  | &mdash;                                                           | Mocked SPI, DMA and NVIC: SPI and DMA wired, DMA interrupt enabled in NVIC.           |
-| REQ-FUN-16  | &mdash;                                                           | Mocked porting API and NVIC: SPI callbacks registered and SPI enabled in NVIC.        |
-| REQ-FUN-17  | &mdash;                                                           | Mocked GPIO: SS deasserted on completion.                                             |
-| REQ-FUN-18  | &mdash;                                                           | Mocked BSP: module reset invoked.                                                     |
-| REQ-FUN-19  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-20  | &mdash;                                                           | Mocked GPIO and porting API: SS deinitialised, handlers deregistered.                 |
-| REQ-FUN-21  | &mdash;                                                           | Mocked SPI and DMA: no functions affecting them are called.                           |
-| REQ-FUN-22  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-23  | &mdash;                                                           | Mocked underlying function calls: fix second parameter and vary the first.            |
-| REQ-FUN-24  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-25  | &mdash;                                                           | Mocked underlying function calls: second parameter asserted.                          |
-| REQ-FUN-26  | &mdash;                                                           | Mocked underlying function calls: return value redirection asserted.                  |
-| REQ-FUN-27  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-28  | &mdash;                                                           | Return value asserted.                                                                |
-| REQ-FUN-29  | &mdash;                                                           | Mocked SPI: transmit-only transfer, return value asserted.                            |
-| REQ-FUN-30  | &mdash;                                                           | Mocked SPI: receive-only transfer, return value asserted.                             |
-| REQ-FUN-31  | &mdash;                                                           | Mocked SPI: full-duplex transfer, return value asserted.                              |
-| REQ-FUN-32  | &mdash;                                                           | Mocked GPIO: SS asserted before and deasserted after the transfer.                    |
-| REQ-FUN-33  | &mdash;                                                           | Simulated transfer failure: return value asserted.                                    |
-| REQ-FUN-34  | &mdash;                                                           | Mocked porting API and GPIO: bus acquire invoked, then SS asserted.                   |
-| REQ-FUN-35  | &mdash;                                                           | Mocked porting API and GPIO: SS deasserted, then bus release invoked.                 |
-| REQ-FUN-36  | &mdash;                                                           | Mocked porting API and SPI: synchronisation prepare invoked, then transfer started.   |
-| REQ-FUN-37  | Reason that the wait cannot return before completion or failure.  | Mocked porting API and SPI: simulated completion and failure each unblock the caller. |
-| REQ-FUN-38  | &mdash;                                                           | Mocked porting API: completion or failure signalled on each SPI event.                |
+| Requirement | Analysis                                                          | Test                                                                                                  |
+|:-----------:|-------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| REQ-FUN-01  | &mdash;                                                           | Mocked GPIO: CHIP_EN and RESET_N held low on return.                                                  |
+| REQ-FUN-02  | &mdash;                                                           | Mocked GPIO: IRQN initialised with pull-up resistor and falling edge interrupt.                       |
+| REQ-FUN-03  | &mdash;                                                           | Mocked porting API: no driver ISR callback registered on init.                                        |
+| REQ-FUN-04  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-05  | &mdash;                                                           | Mocked GPIO: control pins deinitialised.                                                              |
+| REQ-FUN-06  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-07  | Derive the low hold time from the implementation.                 | Mocked GPIO: CHIP_EN and RESET_N held low initially.                                                  |
+| REQ-FUN-08  | Derive the CHIP_EN-before-RESET_N timing from the implementation. | Mocked GPIO: CHIP_EN and RESET_N held high on return.                                                 |
+| REQ-FUN-09  | &mdash;                                                           | Mocked delay: blocking duration asserted.                                                             |
+| REQ-FUN-10  | &mdash;                                                           | Mocked porting API: EXTI callback registered.                                                         |
+| REQ-FUN-11  | &mdash;                                                           | Mocked NVIC: enable and disable calls asserted.                                                       |
+| REQ-FUN-12  | &mdash;                                                           | Mocked SPI: init function invoked even when already configured.                                       |
+| REQ-FUN-13  | &mdash;                                                           | Mocked porting API: DMA TX and RX init invoked when not configured.                                   |
+| REQ-FUN-14  | &mdash;                                                           | Mocked DMA: reconfigured when a parameter is wrong.                                                   |
+| REQ-FUN-15  | &mdash;                                                           | Mocked SPI, DMA and NVIC: SPI and DMA wired, DMA interrupt enabled in NVIC.                           |
+| REQ-FUN-16  | &mdash;                                                           | Mocked porting API and NVIC: SPI callbacks registered and SPI enabled in NVIC.                        |
+| REQ-FUN-17  | &mdash;                                                           | Mocked GPIO: SS deasserted on completion.                                                             |
+| REQ-FUN-18  | &mdash;                                                           | Mocked BSP: module reset invoked.                                                                     |
+| REQ-FUN-19  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-20  | &mdash;                                                           | Mocked GPIO and porting API: SS deinitialised, handlers deregistered.                                 |
+| REQ-FUN-21  | &mdash;                                                           | Mocked SPI and DMA: no functions affecting them are called.                                           |
+| REQ-FUN-22  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-23  | &mdash;                                                           | Mocked underlying function calls: fix second parameter and vary the first.                            |
+| REQ-FUN-24  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-25  | &mdash;                                                           | Mocked underlying function calls: second parameter asserted.                                          |
+| REQ-FUN-26  | &mdash;                                                           | Mocked underlying function calls: return value redirection asserted.                                  |
+| REQ-FUN-27  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-28  | &mdash;                                                           | Return value asserted.                                                                                |
+| REQ-FUN-29  | &mdash;                                                           | Mocked SPI: transmit-only transfer, return value asserted.                                            |
+| REQ-FUN-30  | &mdash;                                                           | Mocked SPI: receive-only transfer, return value asserted.                                             |
+| REQ-FUN-31  | &mdash;                                                           | Mocked SPI: full-duplex transfer, return value asserted.                                              |
+| REQ-FUN-32  | &mdash;                                                           | Mocked GPIO: SS asserted before and deasserted after the transfer.                                    |
+| REQ-FUN-33  | &mdash;                                                           | Simulated transfer failure: return value asserted.                                                    |
+| REQ-FUN-34  | &mdash;                                                           | Mocked porting API and GPIO: bus acquire invoked, then SS asserted.                                   |
+| REQ-FUN-35  | &mdash;                                                           | Mocked porting API and GPIO: SS deasserted, then bus release invoked.                                 |
+| REQ-FUN-36  | &mdash;                                                           | Mocked porting API and SPI: synchronisation prepare invoked, then transfer started.                   |
+| REQ-FUN-37  | Reason that the wait cannot return before completion or failure.  | Mocked porting API and SPI: simulated completion and failure each unblock the caller and deassert SS. |
+| REQ-FUN-38  | &mdash;                                                           | Mocked porting API: completion or failure signalled on each SPI event.                                |
 
 ### 4.2 Performance
 
@@ -387,13 +388,13 @@ row is identified by the requirement it verifies.
 
 ### 4.3 Usability
 
-| Requirement | Inspection                                                                                                                       | Analysis                                                                                               |
-|:-----------:|----------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| REQ-USE-01  | Review that a mock porting implementation suffices for an error-less build and link of the middleware.                           | &mdash;                                                                                                |
-| REQ-USE-02  | Review that SPI, DMA and EXTI interrupt management is leveraged exclusively via the porting interface.                           | &mdash;                                                                                                |
-| REQ-USE-03  | &mdash;                                                                                                                          | Reason that the implementation makes no exclusive ownership claim over the SPI, DMA or EXTI resources. |
-| REQ-USE-04  | Review that a single configuration parameter is solely tasked with switching between DMA and interrupt-based SPI transfers.      | &mdash;                                                                                                |
-| REQ-USE-05  | Review that no call to a blocking function is made for the purpose of SPI synchronisation, except through the porting interface. | &mdash;                                                                                                |
+| Requirement | Inspection                                                                                                                                                    | Analysis                                                                                               |
+|:-----------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| REQ-USE-01  | Review that a mock porting implementation suffices for an error-less build and link of the middleware, with the board and transport layer sources unmodified. | &mdash;                                                                                                |
+| REQ-USE-02  | Review that SPI, DMA and EXTI ISR callback registration and deregistration is leveraged exclusively via the porting interface.                                | &mdash;                                                                                                |
+| REQ-USE-03  | &mdash;                                                                                                                                                       | Reason that the implementation makes no exclusive ownership claim over the SPI, DMA or EXTI resources. |
+| REQ-USE-04  | Review that a single configuration parameter is solely tasked with switching between DMA and interrupt-based SPI transfers.                                   | &mdash;                                                                                                |
+| REQ-USE-05  | Review that no call to a blocking function is made for the purpose of SPI synchronisation, except through the porting interface.                              | &mdash;                                                                                                |
 
 ### 4.4 Interface
 
@@ -406,7 +407,7 @@ row is identified by the requirement it verifies.
 |  REQ-IF-05  | Review that the porting interface specifies the GPIO port and pin for each of IRQN, CHIP_EN, RESET_N, SS, SCK, MOSI, and MISO.                                                                                                                                                                           |
 |  REQ-IF-06  | Review that the porting interface provides mechanisms to register and deregister an ISR callback for the IRQN EXTI signal.                                                                                                                                                                               |
 |  REQ-IF-07  | Review that the porting interface provides mechanisms to register and deregister an ISR callback for each SPI event: transmit-complete, receive-complete, transmit-receive-complete, and error.                                                                                                          |
-|  REQ-IF-08  | Review that the porting interface provides an acquire operation, blocking the SPI bus availability, with a release operation to match.                                                                                                                                                                   |
+|  REQ-IF-08  | Review that the porting interface provides an acquire operation, blocking the invoking thread until SPI bus availability, with a release operation to match.                                                                                                                                             |
 |  REQ-IF-09  | Review that the porting interface provides the sync operations: prepare, resets transfer-completion state; wait, blocks until completion or failure; notify-success and notify-failure, unblock a pending wait and record the outcome; and that the outcome of the last completed transfer is queryable. |
 |  REQ-IF-10  | When DMA is enabled: review that the porting interface identifies the SPI TX and RX DMA streams and provides an initialisation function for each.                                                                                                                                                        |
 |  REQ-IF-11  | Review that the porting interface provides a system clock configuration function.                                                                                                                                                                                                                        |
@@ -418,16 +419,16 @@ row is identified by the requirement it verifies.
 | REQ-DES-01  | Compare the implemented signatures against the vendor interface declarations.                                                                                                |
 | REQ-DES-02  | Review the vendor files against the reference distribution, confirming no modifications &mdash; beyond the exceptions documented in [5.1](#51-assumptions-and-dependencies). |
 | REQ-DES-03  | Review that the SPI transport is implemented.                                                                                                                                |
-| REQ-DES-04  | Builds with no transport selected fail through the `#error` guard.                                                                                                           |
+| REQ-DES-04  | Builds with no supported transport selected fail through the `#error` guard, while others don't.                                                                             |
 | REQ-DES-05  | Review that the imported HAL and CMSIS headers match those of the STM32F401xE.                                                                                               |
 | REQ-DES-06  | Review for C11 standard compliance, and that the middleware makes use of STM32 HAL and CMSIS.                                                                                |
-| REQ-DES-07  | Review that the middleware functions correctly when coupled with the WINC driver and module firmware of version 19.7.11.                                                     |
+| REQ-DES-07  | Review that the middleware builds, links and obeys the expectations and contracts of the WINC1500 driver and module firmware of version 19.7.11.                             |
 
 ### 4.6 Software System Attributes
 
 | Requirement | Inspection                                                                        | Analysis                                                     |
 |:-----------:|-----------------------------------------------------------------------------------|--------------------------------------------------------------|
-| REQ-ATTR-01 | Review that no SPI transfer occurs from within an interrupt handler.              | &mdash;                                                      |
+| REQ-ATTR-01 | Review that SPI transfers are only initiated from within invoking thread context. | &mdash;                                                      |
 | REQ-ATTR-02 | Review that, after any internal recovery attempts, further failures are reported. | &mdash;                                                      |
 | REQ-ATTR-03 | &mdash;                                                                           | Audit access to internally shared state for race conditions. |
 | REQ-ATTR-04 | Review Doxygen coverage of the public API.                                        | &mdash;                                                      |
