@@ -28,41 +28,49 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
+option(BUILD_TESTING "Enable unit tests" OFF)
 
-# Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+if(BUILD_TESTING)
+    enable_language(C)
+    enable_testing()
+    add_subdirectory(tests)
+else()
+    # Enable CMake support for ASM and C languages
+    enable_language(C ASM)
 
-# Add STM32CubeMX generated sources
-add_subdirectory(cmake/stm32cubemx)
+    # Create an executable object type
+    add_executable(${CMAKE_PROJECT_NAME})
 
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
-)
+    # Add STM32CubeMX generated sources
+    add_subdirectory(cmake/stm32cubemx)
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-)
+    # Link directories setup
+    target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        # Add user defined library search paths
+    )
 
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
-)
+    # Add sources to executable
+    target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+        # Add user sources here
+    )
 
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
-)
+    # Add include paths
+    target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        # Add user defined include paths
+    )
 
-# Remove wrong libob.a library dependency when using cpp files
-list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
+    # Add project symbols (macros)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+        # Add user defined symbols
+    )
 
-# Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
+    # Remove wrong libob.a library dependency when using cpp files
+    list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-    # Add user defined libraries
-)
+    # Add linked libraries
+    target_link_libraries(${CMAKE_PROJECT_NAME}
+        stm32cubemx
+
+        # Add user defined libraries
+    )
+endif()
