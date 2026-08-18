@@ -189,6 +189,7 @@ void nm_bsp_register_isr(tpfNmBspIsr cb) {
 	 * is a single ldr instruction on Cortex-M4; atomicity is guaranteed by
 	 * the platform. */
 	module_irqn_pin_isr = cb;
+	CONF_WINC_EXTI_REGISTER_ISR(irqn_on_irq);
 }
 
 void nm_bsp_interrupt_ctrl(uint8 state) {
