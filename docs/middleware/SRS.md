@@ -19,7 +19,8 @@ Version 1.0.
     * [3.2 Performance](#32-performance)
     * [3.3 Usability](#33-usability)
     * [3.4 Interface](#34-interface)
-        * [3.4.1 Porting Interface](#341-porting-interface)
+        * [3.4.1 Hardware Interface](#341-hardware-interface)
+        * [3.4.2 Porting Interface](#342-porting-interface)
     * [3.5 Design Constraints](#35-design-constraints)
     * [3.6 Software System Attributes](#36-software-system-attributes)
         * [3.6.1 Reliability](#361-reliability)
@@ -59,7 +60,7 @@ baremetal or RTOS).
 ### 1.3 Component Overview
 #### 1.3.1 Component Perspective
 
-The middleware lies at the second-most bottom layer of four-stratum stack:
+The middleware lies at the second-most bottom layer of a four-stratum stack:
 1) the application firmware calls
 2) the vendor driver to execute networking functions, which in turn invokes
 3) the middleware to convert them into platform-specific read-write commands,
@@ -90,7 +91,7 @@ The middleware performs four groups of functions.
   compliant with datasheet specifications.
 - As an implementation of the BSP interface, it is charged with **managing 
   module-to-host interrupt**: the module exposes a specialised pin to transmit
-  interrupt requests to the board &mdash;; the middleware configures said pin
+  interrupt requests to the board &mdash; the middleware configures said pin
   appropriately.
 - As an implementation of the bus wrapper interface, it **handles WINC-relevant
   SPI transport**: peripheral configuration, thread-safe full-duplex and
@@ -172,11 +173,11 @@ For the purposes of this subsection:
 |     ID     | Requirement                                                                                                                                                                                   | Rationale                                                                                                                                                                                                            |
 |:----------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | REQ-FUN-12 | On invocation, `nm_bus_init` shall configure the SPI interface to the module-required SPI configuration, replacing any configuration in effect at entry.                                      | The SPI configuration in its entirety is crucial to establishing communication with the module. Ensuring its compliance with the module requirements becomes the middleware's responsibility rather than the user's. |
-| REQ-FUN-13 | When the DMA option is enabled, `nm_bus_init` shall invoke the the porting API to initialise SPI TX and RX DMA streams, if needed.                                                            | Since DMA configuration is largely inconsequential to the driver functionality, more liberty is given to the user then with the SPI configuration.                                                                   |
+| REQ-FUN-13 | When the DMA option is enabled, `nm_bus_init` shall invoke the porting API to initialise SPI TX and RX DMA streams, if needed.                                                                | Since DMA configuration is largely inconsequential to the driver functionality, more liberty is given to the user then with the SPI configuration.                                                                   |
 | REQ-FUN-14 | When the DMA option is enabled, `nm_bus_init` shall ensure that each DMA stream holds the module-required DMA parameters, and shall reconfigure any stream that does not.                     | A minimal set of DMA parameters remains module-critical, so the wrapper validates and self-heals them.                                                                                                               |
 | REQ-FUN-15 | When the DMA option is enabled, `nm_bus_init` shall link SPI interface and DMA controller, and shall enable DMA interrupts in the NVIC.                                                       | &mdash;                                                                                                                                                                                                              |
 | REQ-FUN-16 | `nm_bus_init` shall invoke the porting API to register a handler for each SPI event, and shall enable SPI interrupts in the NVIC.                                                             | Interrupt-driven transfers enable power-efficient synchronisation mechanisms, compared to timeout-based transfers which force polling.                                                                               |
-| REQ-FUN-17 | `nm_bus_init` shall leave the SS signal deasserted on completion.                                                                                                                             | The module is disabled by default until a call is made to explicity enable it.                                                                                                                                       |
+| REQ-FUN-17 | `nm_bus_init` shall leave the SS signal deasserted on completion.                                                                                                                             | The module is disabled by default until a call is made to explicitly enable it.                                                                                                                                      |
 | REQ-FUN-18 | `nm_bus_init` shall invoke the BSP API to perform a module reset.                                                                                                                             | The module is powered on only once the interface is ready.                                                                                                                                                           |
 | REQ-FUN-19 | `nm_bus_init` shall return `M2M_SUCCESS` on success, and a negative integer on failure to fulfill any of the above requirements.                                                              | The vendor contract requires it.                                                                                                                                                                                     |
 | REQ-FUN-20 | On invocation, `nm_bus_deinit` shall deinitialise the SS pin and deregister any SPI event handlers.                                                                                           | &mdash;                                                                                                                                                                                                              |
@@ -230,13 +231,13 @@ middleware to a target application by the user (defined
 of microcontrollers; the middleware is not required to function on any other
 platform.
 
-|     ID     | Requirement                                                                                                                                     | Rationale                                                                                                           |
-|:----------:|-------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+|     ID     | Requirement                                                                                                                                                                                                                    | Rationale                                                                                                           |
+|:----------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | REQ-USE-01 | Adapting the middleware to a target application shall not require changes to the vendor driver or to the board and transport abstraction layer, and shall require only an appropriate implementation of the porting interface. | All application-specific behaviour is confined to the porting interface and its implementation.                     |
-| REQ-USE-02 | The middleware shall obtain SPI, DMA and EXTI interrupt delivery through the porting interface exclusively.                                     | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
-| REQ-USE-03 | The middleware shall not claim exclusive ownership of the SPI, DMA and EXTI resources.                                                          | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
-| REQ-USE-04 | Selecting between DMA-based and interrupt-based SPI transfers shall require a single configuration change in the porting interface.             | &mdash;                                                                                                             |
-| REQ-USE-05 | The middleware shall determine transfer-completion blocking through the porting interface without imposing a particular blocking mechanism.     | The blocking mechanism is user-defined in the porting interface, so the user may adopt any waiting strategy.        |
+| REQ-USE-02 | The middleware shall obtain SPI, DMA and EXTI interrupt delivery through the porting interface exclusively.                                                                                                                    | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
+| REQ-USE-03 | The middleware shall not claim exclusive ownership of the SPI, DMA and EXTI resources.                                                                                                                                         | As there is no reason to make an exclusive claim to either of SPI, DMA and EXTI peripherals, they remain shareable. |
+| REQ-USE-04 | Selecting between DMA-based and interrupt-based SPI transfers shall require a single configuration change in the porting interface.                                                                                            | &mdash;                                                                                                             |
+| REQ-USE-05 | The middleware shall determine transfer-completion blocking through the porting interface without imposing a particular blocking mechanism.                                                                                    | The blocking mechanism is user-defined in the porting interface, so the user may adopt any waiting strategy.        |
 
 ### 3.4 Interface
 
@@ -331,8 +332,8 @@ STM32F401xE interfacing with the WINC1500 over SPI, in its intended environment
 &mdash; is outside the scope of this section.
 
 Each method cell states the technique applied for the corresponding requirement;
-an em dash (&mdash;) means the requirement does not require that method. Each row
-is identified by the requirement it verifies.
+an em dash (&mdash;) means the requirement does not require that method. Each
+row is identified by the requirement it verifies.
 
 ### 4.1 Functions
 
@@ -400,8 +401,8 @@ is identified by the requirement it verifies.
 |:-----------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |  REQ-IF-01  | Review that the control signals are exposed through user-defined pins.                                                                                                                                                                                                                                   |
 |  REQ-IF-02  | Review that the SPI data signals and SS are exposed through user-defined pins.                                                                                                                                                                                                                           |
-|  REQ-IF-03  | Review that the the module-required SPI configuration is enforced.                                                                                                                                                                                                                                       |
-|  REQ-IF-04  | Review that the the module-required DMA configuration parameters are enforced.                                                                                                                                                                                                                           |
+|  REQ-IF-03  | Review that the module-required SPI configuration is enforced.                                                                                                                                                                                                                                           |
+|  REQ-IF-04  | Review that the module-required DMA configuration parameters are enforced.                                                                                                                                                                                                                               |
 |  REQ-IF-05  | Review that the porting interface specifies the GPIO port and pin for each of IRQN, CHIP_EN, RESET_N, SS, SCK, MOSI, and MISO.                                                                                                                                                                           |
 |  REQ-IF-06  | Review that the porting interface provides mechanisms to register and deregister an ISR callback for the IRQN EXTI signal.                                                                                                                                                                               |
 |  REQ-IF-07  | Review that the porting interface provides mechanisms to register and deregister an ISR callback for each SPI event: transmit-complete, receive-complete, transmit-receive-complete, and error.                                                                                                          |
